@@ -15,22 +15,16 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
     return MaterialApp(
-
-      debugShowCheckedModeBanner: false,
-
-      theme: ThemeData(
-        useMaterial3: true,
-      ),
-
-      initialRoute: "/",
-
-      routes: {
-  "/": (context) => const SplashPage(),
-  "/home": (context) => const HomePage(),
-}
-
-    );
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          useMaterial3: true,
+        ),
+        initialRoute: "/",
+        routes: {
+          "/": (context) => const SplashPage(),
+          "/login": (context) => const LoginPage(),
+          "/home": (context) => const HomePage(),
+        });
   }
 }

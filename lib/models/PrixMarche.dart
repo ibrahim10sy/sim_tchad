@@ -223,9 +223,6 @@ class PrixMarche {
     'origineProduit': origineProduit,
     'observation': observation,
     'dateAjout': dateAjout,
-    'latitude': latitude,
-    'longitude': longitude,
-
     // Relations encodées en JSON String
     'produit': produit != null ? jsonEncode(produit!.toJson()) : null,
     'niveau': niveau != null ? jsonEncode(niveau!.toJson()) : null,

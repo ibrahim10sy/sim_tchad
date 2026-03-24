@@ -4,7 +4,8 @@ class AppConstants {
   static const String appName = 'sim_tchad';
   
   /// API endpoints
-  static const String baseUrl = 'http://10.0.2.2:5600/api/';
+  static const String baseUrl = 'https://api.sim-prix.net/api/';
+  // static const String baseUrl = 'http://10.0.2.2:5600/api/';
   
   static const int MAX_RETRIES = 3;
  static const int RETRY_DELAY = 3000;

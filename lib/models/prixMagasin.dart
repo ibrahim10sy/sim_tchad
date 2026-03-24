@@ -1,29 +1,28 @@
 import 'dart:convert';
 
-import 'BassinProduction.dart';
-import 'EnqueteCollecte.dart';
-import 'EnqueteMagasin.dart';
-import 'Enqueteur.dart';
-import 'Magasin.dart';
-import 'Marche.dart';
-import 'NiveauApprovisionnement.dart';
-import 'Produit.dart';
-import 'Unite.dart';
+import 'package:sim_tchad/models/BassinProduction.dart';
+import 'package:sim_tchad/models/EnqueteMagasin.dart';
+import 'package:sim_tchad/models/Enqueteur.dart';
+import 'package:sim_tchad/models/Magasin.dart';
+import 'package:sim_tchad/models/NiveauApprovisionnement.dart';
+import 'package:sim_tchad/models/Produit.dart';
+
+
 
 class PrixMagasin {
   int? idPrixMagasin;
   String? codePrix;
   String? image;
-  String uniteMesure;
-  String prixBordChamp;
-  String stockDisponible;
+  String? uniteMesure;
+  String? prixBordChamp;
+  String? stockDisponible;
   String? variete;
   String? age;
-  String prixTransport;
+  String? prixTransport;
   String? uniteTransport;
   String? moyenTransport;
-  String prixVente;
-  String observation;
+  String? prixVente;
+  String? observation;
   String? statut;
   String? dateAjout;
   String? qualiteProduit;
@@ -40,16 +39,16 @@ class PrixMagasin {
     this.idPrixMagasin,
     this.codePrix,
     this.image,
-    required this.uniteMesure,
-    required this.prixBordChamp,
-    required this.stockDisponible,
+     this.uniteMesure,
+     this.prixBordChamp,
+     this.stockDisponible,
     this.variete,
     this.age,
-    required this.prixTransport,
+     this.prixTransport,
     this.uniteTransport,
     this.moyenTransport,
-    required this.prixVente,
-    required this.observation,
+     this.prixVente,
+     this.observation,
     this.statut,
     this.dateAjout,
     this.qualiteProduit,
@@ -98,22 +97,22 @@ class PrixMagasin {
   factory PrixMagasin.fromMap(Map<String, dynamic> map) {
     return PrixMagasin(
       idPrixMagasin: map['idPrixMagasin'],
-      codePrix: map['codePrix'],
-      image: map['image'],
-      uniteMesure: map['uniteMesure'],
-      prixBordChamp: map['prixBordChamp'],
-      stockDisponible: map['stockDisponible'],
-      variete: map['variete'],
-      age: map['age'],
-      prixTransport: map['prixTransport'],
-      uniteTransport: map['uniteTransport'],
-      moyenTransport: map['moyenTransport'],
-      prixVente: map['prixVente'],
-      observation: map['observation'],
-      statut: map['statut'],
-      dateAjout: map['dateAjout'],
-      qualiteProduit: map['qualiteProduit'],
-      dateModif: map['dateModif'],
+      codePrix: map['codePrix'] ?? '',
+      image: map['image'] ?? '',
+      uniteMesure: map['uniteMesure'] ?? '',
+      prixBordChamp: map['prixBordChamp'] ?? '',
+      stockDisponible: map['stockDisponible'] ?? '',
+      variete: map['variete'] ?? '',
+      age: map['age'] ?? '',
+      prixTransport: map['prixTransport'] ?? '',
+      uniteTransport: map['uniteTransport'] ?? '',
+      moyenTransport: map['moyenTransport'] ?? '',
+      prixVente: map['prixVente'] ?? '',
+     observation: map['observation'] ?? '',
+      statut: map['statut'] ?? '',
+      dateAjout: map['dateAjout'] ?? '',
+      qualiteProduit: map['qualiteProduit'] ?? '',
+      dateModif: map['dateModif'] ?? '',
       bassinProduction: map['bassinProduction'] != null
           ? BassinProduction.fromJson(jsonDecode(map['bassinProduction']))
           : null,
@@ -138,22 +137,22 @@ class PrixMagasin {
   factory PrixMagasin.fromJson(Map<String, dynamic> json) {
     return PrixMagasin(
       idPrixMagasin: json['idPrixMagasin'],
-      codePrix: json['codePrix'],
-      image: json['image'],
+      codePrix: json['codePrix'] ?? '',
+      image: json['image'] ?? '',
       uniteMesure: json['uniteMesure'] ?? '',
       prixBordChamp: json['prixBordChamp'] ?? '',
       stockDisponible: json['stockDisponible'] ?? '',
       variete: json['variete'] ?? '',
-      age: json['age'],
+      age: json['age'] ?? '',
       prixTransport: json['prixTransport'] ?? '',
-      uniteTransport: json['uniteTransport'],
-      moyenTransport: json['moyenTransport'],
+      uniteTransport: json['uniteTransport'] ?? '',
+      moyenTransport: json['moyenTransport'] ?? '',
       prixVente: json['prixVente'] ?? '',
       observation: json['observation'] ?? '',
-      statut: json['statut'],
-      dateAjout: json['dateAjout'],
-      qualiteProduit: json['qualiteProduit'],
-      dateModif: json['dateModif'],
+      statut: json['statut'] ?? '',
+      dateAjout: json['dateAjout'] ?? '',
+      qualiteProduit: json['qualiteProduit'] ?? '',
+      dateModif: json['dateModif'] ?? '',
       bassinProduction: json['bassinProduction'] != null
           ? BassinProduction.fromJson(jsonDecode(json['bassinProduction']))
           : null,

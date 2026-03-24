@@ -28,25 +28,30 @@ class _AchevePageState extends State<AchevePage> {
     _fetchDataLocal();
   }
 
-  Future<void> _fetchDataLocal() async {
-    setState(() => isLoading = true);
-    try {
-      final dataMarche = await DatabaseService.getAllFicheMarche();
-      final dataMagasin = await DatabaseService.getAllFicheMagasin();
-      final dataSuivi = await DatabaseService.getAllFicheSuivi();
+Future<void> _fetchDataLocal() async {
+  if (!mounted) return; // Vérifie que le widget est encore dans l'arbre
+  setState(() => isLoading = true);
 
-      setState(() {
-        fiches = dataMarche.map((e) => EnqueteCollecte.fromJson(e)).toList();
-        fichesMagasin =
-            dataMagasin.map((e) => EnqueteMagasin.fromJson(e)).toList();
-        fichesSuivi = dataSuivi.map((e) => EnqueteSuivi.fromJson(e)).toList();
-      });
-    } catch (e) {
-      debugPrint("Erreur : $e");
-    } finally {
+  try {
+    final dataMarche = await DatabaseService.getAllFicheMarche();
+    final dataMagasin = await DatabaseService.getAllFicheMagasin();
+    final dataSuivi = await DatabaseService.getAllFicheSuivi();
+
+    if (!mounted) return; // 🔹 Vérifie encore avant de mettre à jour l'état
+    setState(() {
+      fiches = dataMarche.map((e) => EnqueteCollecte.fromJson(e)).toList();
+      fichesMagasin =
+          dataMagasin.map((e) => EnqueteMagasin.fromJson(e)).toList();
+      fichesSuivi = dataSuivi.map((e) => EnqueteSuivi.fromJson(e)).toList();
+    });
+  } catch (e) {
+    debugPrint("Erreur : $e");
+  } finally {
+    if (mounted) {
       setState(() => isLoading = false);
     }
   }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -64,7 +69,7 @@ class _AchevePageState extends State<AchevePage> {
               "Fiches Achevées",
               style: TextStyle(
                 fontWeight: FontWeight.w800, // Plus épais pour un look moderne
-                fontSize: 20,
+                fontSize: 16,
                 letterSpacing: -0.5,
               ),
             ),
@@ -72,7 +77,7 @@ class _AchevePageState extends State<AchevePage> {
             Text(
               "${fiches.length + fichesMagasin.length + fichesSuivi.length} fiches au total",
               style: TextStyle(
-                fontSize: 12,
+                fontSize: 11,
                 color: Colors.grey[600],
                 fontWeight: FontWeight.w400,
               ),

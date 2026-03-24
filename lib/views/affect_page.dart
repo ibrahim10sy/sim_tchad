@@ -45,10 +45,10 @@ class _AffectPageState extends State<AffectPage> {
 
       // Si le serveur dit que le mot de passe doit être reset (resetPassword == false)
       // et que nous n'avons pas encore marqué localement que c'est fait.
-      if (enqueteur!.resetPassword == false) {
+      if (enqueteur!.resetPassword == false && !firstLoginDone) {
         // Attendre la fin du build pour afficher le modal
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          _showResetPasswordModal(context, enqueteur!.codeEnqueteur);
+          _showResetPasswordModal(context, enqueteur!.codeEnqueteur!);
         });
       }
     }
@@ -65,16 +65,22 @@ class _AffectPageState extends State<AffectPage> {
   Future<void> _fetchDataLocal() async {
     print(">>> _fetchDataLocal appelé"); // <-- vérification
     if (enqueteur == null) return;
+
+    if (!mounted) return;
     setState(() => isLoading = true);
     try {
       final magasinsData = await DatabaseService.getAll("Magasin");
       final marchesData = await DatabaseService.getAll("Marche");
+
+      if (!mounted) return;
       setState(() {
         magasins = magasinsData.map((m) => Magasin.fromJson(m)).toList();
         marches = marchesData.map((m) => Marche.fromJson(m)).toList();
       });
     } finally {
+      if (mounted) {
       setState(() => isLoading = false);
+    }
     }
   }
 
@@ -201,7 +207,7 @@ class _AffectPageState extends State<AffectPage> {
     });
     try {
       await handleFetchData(
-        enqueteur!.codeEnqueteur,
+        enqueteur!.codeEnqueteur!,
         enqueteur!.acteur!.codeActeur!,
         (progress) => setState(() => syncProgress = progress),
       );

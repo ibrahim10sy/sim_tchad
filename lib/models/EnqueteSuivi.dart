@@ -1,13 +1,15 @@
 import 'dart:convert';
-import 'Commune.dart';
-import 'Enqueteur.dart';
+
+import 'package:sim_tchad/models/Commune.dart';
+import 'package:sim_tchad/models/Enqueteur.dart';
+
 
 class EnqueteSuivi {
   int? idEnquete;
   String numFiche;
   String dateEnquete;
   String? reference;
-  Enqueteur enqueteur;
+  Enqueteur? enqueteur;
   String? dateEnregistrement;
   String? dateModif;
   Commune? commune;
@@ -17,48 +19,74 @@ class EnqueteSuivi {
     required this.numFiche,
     required this.dateEnquete,
     this.reference,
-    required this.enqueteur,
+     this.enqueteur,
     this.dateEnregistrement,
     this.dateModif,
     this.commune,
-  }); 
+  });
 
-/// Convertit un JSON (ou un string JSON pour les relations) en objet Dart
- /// Convertit un JSON (ou un string JSON pour les relations) en objet Dart
-  factory EnqueteSuivi.fromJson(Map<String, dynamic> json) {
-    // Décoder si le champ relationnel est stocké en TEXT
-    Enqueteur parseEnqueteur(dynamic data) {
-      if (data is String) {
+
+static Enqueteur? _parseEnqueteur(dynamic data) {
+  if (data == null) return null;
+
+  try {
+    if (data is String) {
+      // 🔥 Vérifier si c’est du vrai JSON
+      if (data.trim().startsWith('{')) {
         return Enqueteur.fromJson(jsonDecode(data));
-      } else if (data is Map<String, dynamic>) {
-        return Enqueteur.fromJson(data);
       } else {
-        throw Exception("Impossible de parser enqueteur: $data");
+        print("Format invalide Enqueteur: $data");
+        return null;
       }
+    } else if (data is Map<String, dynamic>) {
+      return Enqueteur.fromJson(data);
     }
-
-    Commune? parseCommune(dynamic data) {
-      if (data == null) return null;
-      if (data is String) {
-        return Commune.fromJson(jsonDecode(data));
-      } else if (data is Map<String, dynamic>) {
-        return Commune.fromJson(data);
-      } else {
-        throw Exception("Impossible de parser commune: $data");
-      }
-    }
-
-    return EnqueteSuivi(
-      idEnquete: json['idEnquete'],
-      numFiche: json['numFiche'],
-      dateEnquete: json['dateEnquete'],
-      reference: json['reference'],
-      enqueteur: parseEnqueteur(json['enqueteur']),
-      dateEnregistrement: json['dateEnregistrement'],
-      dateModif: json['dateModif'],
-      commune: parseCommune(json['commune']),
-    );
+  } catch (e) {
+    print("Erreur parsing Enqueteur: $e");
   }
+
+  return null;
+}
+
+static Commune? _parseCommune(dynamic data) {
+  if (data == null) return null;
+
+  try {
+    if (data is String) {
+      // 🔥 Vérifier si c’est du vrai JSON
+      if (data.trim().startsWith('{')) {
+        return Commune.fromJson(jsonDecode(data));
+      } else {
+        print("Format invalide Enqueteur: $data");
+        return null;
+      }
+    } else if (data is Map<String, dynamic>) {
+      return Commune.fromJson(data);
+    }
+  } catch (e) {
+    print("Erreur parsing Enqueteur: $e");
+  }
+
+  return null;
+}
+
+  /// Conversion depuis JSON
+  factory EnqueteSuivi.fromJson(Map<String, dynamic> json) {
+  return EnqueteSuivi(
+    idEnquete: json['idEnquete'],
+    numFiche: json['numFiche'],
+    dateEnquete: json['dateEnquete'],
+    reference: json['reference'],
+    enqueteur: json['enqueteur'] != null
+        ? _parseEnqueteur(json['enqueteur'])
+        : null,
+    dateEnregistrement: json['dateEnregistrement'],
+    dateModif: json['dateModif'],
+    commune: json['commune'] != null
+        ? _parseCommune(json['commune'])
+        : null,
+  );
+}
 
   /// Conversion vers JSON
   Map<String, dynamic> toJson() {
@@ -67,10 +95,10 @@ class EnqueteSuivi {
       'numFiche': numFiche,
       'dateEnquete': dateEnquete,
       'reference': reference,
-      'enqueteur': enqueteur.toJson(),
+       'enqueteur': jsonEncode(enqueteur!.toJson()),
       'dateEnregistrement': dateEnregistrement,
       'dateModif': dateModif,
-      'commune': commune?.toJson(),
+      'commune': commune != null ? jsonEncode(commune!.toJson()) : null,
     };
   }
 
@@ -81,7 +109,7 @@ class EnqueteSuivi {
       'numFiche': numFiche,
       'dateEnquete': dateEnquete,
       'reference': reference,
-      'enqueteur': jsonEncode(enqueteur.toJson()),
+     'enqueteur': enqueteur != null ? jsonEncode(enqueteur!.toJson()) : null,
       'dateEnregistrement': dateEnregistrement,
       'dateModif': dateModif,
       'commune': commune != null ? jsonEncode(commune!.toJson()) : null,
@@ -97,7 +125,7 @@ class EnqueteSuivi {
       reference: map['reference'],
       enqueteur: map['enqueteur'] != null
           ? Enqueteur.fromJson(jsonDecode(map['enqueteur']))
-          : throw Exception("Enqueteur obligatoire"),
+          : null,
       dateEnregistrement: map['dateEnregistrement'],
       dateModif: map['dateModif'],
       commune: map['commune'] != null ? Commune.fromJson(jsonDecode(map['commune'])) : null,

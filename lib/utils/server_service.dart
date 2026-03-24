@@ -3,6 +3,9 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:sim_tchad/core/constants/app_constants.dart';
 import 'package:sim_tchad/models/Enqueteur.dart';
+import 'package:sim_tchad/models/PrixMarche.dart';
+import 'package:sim_tchad/models/SuiviFlux.dart';
+import 'package:sim_tchad/models/prixMagasin.dart';
 import 'package:sim_tchad/utils/database_service.dart';
 import 'package:sqflite/sqflite.dart';
 import 'database_helper.dart';
@@ -24,8 +27,8 @@ Future<bool> checkEnqueteCollecteExists(String numFiche) async {
 
 Future<bool> checkEnquetMagasinExists(String numFiche) async {
   try {
-    final response = await http
-        .get(Uri.parse("${API_URL}enquete-magasins/check/$numFiche"));
+    final response =
+        await http.get(Uri.parse("${API_URL}enquete-magasins/check/$numFiche"));
     return response.statusCode == 200;
   } catch (e) {
     return false;
@@ -34,8 +37,8 @@ Future<bool> checkEnquetMagasinExists(String numFiche) async {
 
 Future<bool> checkEnquetSuiviExists(String numFiche) async {
   try {
-    final response = await http
-        .get(Uri.parse("${API_URL}enquete-Suivi/check/$numFiche"));
+    final response =
+        await http.get(Uri.parse("${API_URL}enquete-suivis/check/$numFiche"));
     return response.statusCode == 200;
   } catch (e) {
     return false;
@@ -155,6 +158,171 @@ Future<bool> syncFicheMagasinToServer(String numFiche) async {
   }
 
   return success;
+}
+
+Future<bool> syncFicheSuiviToServer(String numFiche) async {
+  final localData = await DatabaseService.getFicheSuiviByNumFiche(numFiche);
+  if (localData == null) {
+    print("Aucune donnée à synchroniser.");
+    return false;
+  }
+
+  final ficheExiste = await checkEnquetSuiviExists(localData.numFiche!);
+  if (ficheExiste) {
+    print("La fiche ${localData.numFiche} existe déjà sur le serveur.");
+    return true;
+  }
+
+  bool success = false;
+  int attempt = 0;
+
+  while (!success && attempt < retry) {
+    try {
+      attempt++;
+
+      final formattedData = {
+        'numFiche': localData.numFiche,
+        'dateEnquete': localData.dateEnquete,
+        "enqueteur": {"idEnqueteur": localData.enqueteur!.idEnqueteur},
+        'commune': {
+          "idCommune": localData.commune!.idCommune,
+        },
+      };
+
+      final response = await http.post(
+        Uri.parse("${API_URL}enquete-suivis"),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(formattedData),
+      );
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        print("Fiche magasin synchronisée avec succès : ${localData.numFiche}");
+        success = true;
+      } else {
+        print("Tentative $attempt/$retry échouée. Réponse : ${response.body}");
+      }
+    } catch (e) {
+      print("Erreur lors de l'envoi (Tentative $attempt/$retry) : $e");
+      if (attempt < retry) {
+        await Future.delayed(Duration(milliseconds: delay));
+      }
+    }
+  }
+
+  if (!success) {
+    print("Échec de la synchronisation pour ${localData.numFiche}");
+  }
+
+  return success;
+}
+
+Future<bool> syncDataSuiviByFicheServer(
+    Enqueteur enqueteur, String numFiche) async {
+  print("Sync en cours... $numFiche");
+
+  try {
+    // 1. Récupérer données locales
+    final localData = await DatabaseService.getSuiviByNum(numFiche);
+
+    if (localData.isEmpty) {
+      print("Aucune donnée à synchroniser.");
+      return false;
+    }
+
+    // 2. Vérifier si fiche existe
+    final ficheExists = await checkEnquetSuiviExists(numFiche);
+
+    if (!ficheExists) {
+      final success = await syncFicheSuiviToServer(numFiche);
+      if (!success) {
+        print("Échec synchro fiche");
+        return false;
+      }
+    }
+
+    // 3. Construire JSON
+    final data = localData.map((item) {
+      return {
+        "fluxEntrantTonne": item.fluxEntrantTonne ?? 0,
+        "fluxSortantTonne": item.fluxSortantTonne ?? 0,
+        "disponibilite": item.disponibilite ?? null,
+        "difficulte": item.difficulte ?? null,
+        "dateCollecte": item.dateCollecte ?? null,
+        "observation": item.observation ?? null,
+        "dateAjout": item.dateAjout ?? null,
+        "produit": {
+          "idProduit": item.produit?.idProduit,
+          "nomProduit": item.produit?.nomProduit,
+        },
+        "niveau": item.niveau != null
+            ? {
+                "idNiveauApprovisionnement":
+                    item.niveau?.idNiveauApprovisionnement,
+              }
+            : null,
+        "enqueteur": {
+          "idEnqueteur": enqueteur.idEnqueteur,
+        },
+        "enqueteSuivi": item.enqueteSuivi != null
+            ? {"numFiche": item.enqueteSuivi!.numFiche}
+            : null,
+      };
+    }).toList();
+
+    print("DATA ENVOYÉE: ${jsonEncode(data)}");
+
+    bool success = false;
+    int attempt = 0;
+
+    while (!success && attempt < retry) {
+      try {
+        attempt++;
+
+        final response = await http.post(
+          Uri.parse("${API_URL}suivis/batch"),
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: jsonEncode(data), // ✅ ENVOI DU JSON
+        );
+
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          print("✅ Sync réussie");
+
+          // 🔥 SUPPRESSION DES DONNÉES LOCALES
+          for (var item in localData) {
+            await DatabaseService.delete(
+              "SuiviFlux",
+              "idSuivi",
+              item.idSuivi,
+            );
+          }
+
+          // 🔥 SUPPRIMER LA FICHE
+          await DatabaseService.delete(
+            "EnqueteSuivi", // ✅ corrigé
+            "numFiche",
+            numFiche,
+          );
+
+          success = true;
+        } else {
+          print("❌ Tentative $attempt échouée: ${response.body}");
+        }
+      } catch (e) {
+        print("❌ Erreur tentative $attempt: $e");
+
+        if (attempt < retry) {
+          await Future.delayed(Duration(milliseconds: delay));
+        }
+      }
+    }
+
+    return success;
+  } catch (e) {
+    print("❌ Erreur générale: $e");
+    return false;
+  }
 }
 
 Future<bool> syncDataMarcheByFicheServer(
@@ -356,8 +524,9 @@ Future<bool> syncDataMagasinByFicheServer(
                     item.niveau?.idNiveauApprovisionnement,
               }
             : null,
-        "magasin":
-            item.magasin != null ? {"idMagasin": item.magasin!.idMagasin} : null,
+        "magasin": item.magasin != null
+            ? {"idMagasin": item.magasin!.idMagasin}
+            : null,
         "enqueteur":
             enqueteur != null ? {"idEnqueteur": enqueteur.idEnqueteur} : null,
         "enqueteMagasin": item.enqueteMagasin != null
@@ -436,6 +605,385 @@ Future<bool> syncDataMagasinByFicheServer(
     return success;
   } catch (e) {
     print("❌ Erreur générale: $e");
+    return false;
+  }
+}
+
+//update methode
+Future<bool> syncDataAgentUpdateServer() async {
+  try {
+    final List<SuiviFlux> localData = await DatabaseService.getAllSuivi();
+
+    if (localData.isEmpty) {
+      print("Aucune donnée à synchroniser.");
+      return false;
+    }
+
+    List<SuiviFlux> failedItems = [];
+
+    for (final item in localData) {
+      bool success = false;
+      int attempt = 0;
+
+      while (!success && attempt < retry) {
+        print("item ${item.codeSuivi}");
+        try {
+          attempt++;
+
+          final formattedData = {
+            "codeSuivi": item.codeSuivi,
+            "observation": item.observation ?? null,
+            "fluxEntrantTonne": item.fluxEntrantTonne ?? null,
+            "fluxSortantTonne": item.fluxSortantTonne ?? null,
+            "disponibilite": item.disponibilite ?? null,
+            "difficulte": item.difficulte ?? null,
+            "dateCollecte": item.dateCollecte ?? null,
+            "dateAjout": item.dateAjout ?? null,
+
+            // 🔥 relations (safe null)
+            "produit": item.produit?.idProduit != null
+                ? {
+                    "idProduit": item.produit!.idProduit,
+                    "nomProduit": item.produit!.nomProduit,
+                  }
+                : null,
+
+            "niveau": item.niveau?.idNiveauApprovisionnement != null
+                ? {
+                    "idNiveauApprovisionnement":
+                        item.niveau!.idNiveauApprovisionnement,
+                  }
+                : null,
+
+            "enqueteur": item.enqueteur?.idEnqueteur != null
+                ? {"idEnqueteur": item.enqueteur!.idEnqueteur}
+                : null,
+
+            "enqueteSuivi": item.enqueteSuivi?.numFiche != null
+                ? {"numFiche": item.enqueteSuivi!.numFiche}
+                : null,
+
+            "commune": item.commune?.idCommune != null
+                ? {"idCommune": item.commune!.idCommune}
+                : null,
+          };
+
+          final response = await http
+              .put(
+                Uri.parse("${API_URL}suivis/${item.codeSuivi}"),
+                headers: {"Content-Type": "application/json"},
+                body: jsonEncode(formattedData),
+              )
+              .timeout(const Duration(seconds: 10));
+
+          if (response.statusCode >= 200 && response.statusCode < 300) {
+            print("✅ Donnée synchronisée avec succès : $formattedData");
+
+            await DatabaseService.delete(
+              "SuiviFluxs",
+              "idSuivi",
+              item.idSuivi!,
+            );
+
+            success = true;
+          } else {
+            print(
+                "⚠️ Tentative $attempt/$retry échouée. Réponse : ${response.body}");
+          }
+        } catch (e) {
+          print("❌ Erreur lors de l'envoi (Tentative $attempt/$retry) : $e");
+
+          if (attempt < retry) {
+            await Future.delayed(Duration(milliseconds: delay));
+          }
+        }
+      }
+
+      if (!success) {
+        failedItems.add(item);
+      }
+    }
+
+    // 🔥 Gestion des échecs
+    if (failedItems.isNotEmpty) {
+      print(
+          "❌ ${failedItems.length} élément(s) non synchronisé(s). Réessai plus tard.");
+    } else {
+      // await deleteAllAgentReject();
+      print("✅ Toutes les données ont été synchronisées !");
+    }
+
+    return failedItems.isEmpty;
+  } catch (e) {
+    print("❌ Erreur générale de synchronisation : $e");
+    return false;
+  }
+}
+
+Future<bool> syncDataUpdateServer() async {
+  try {
+    final List<PrixMarche> localData =
+        await DatabaseService.getAllPrixMarches();
+
+    if (localData.isEmpty) {
+      print("Aucune donnée à synchroniser.");
+      return false;
+    }
+
+    List<PrixMarche> failedItems = [];
+
+    for (final item in localData) {
+      bool success = false;
+      int attempt = 0;
+
+      while (!success && attempt < retry) {
+        try {
+          attempt++;
+
+          // 🔥 JSON sécurisé
+          final formattedData = {
+            "idPrixMarche": item.idPrixMarche,
+            "codePrix": item.codePrix,
+            "variete": item.variete,
+            "age": int.tryParse(item.age ?? "0"),
+            "prixUnite1": int.tryParse(item.prixUnite1 ?? "0"),
+            "prixUnite2": int.tryParse(item.prixUnite2 ?? "0"),
+            "prixUnite3": int.tryParse(item.prixUnite3 ?? "0"),
+            "uniteMesure2": item.uniteMesure2,
+            "uniteMesure3": item.uniteMesure3,
+            "prixTransport": int.tryParse(item.prixTransport ?? "0"),
+            "moyenTransport": item.moyenTransport,
+            "fournisseur": item.fournisseur,
+            "clientPrincipal": item.clientPrincipal,
+            "uniteTransport": item.uniteTransport,
+            "etatRoute": item.etatRoute,
+            "origineProduit": item.origineProduit,
+            "observation": item.observation,
+            "dateAjout": item.dateAjout,
+
+            // 🔥 relations (safe null)
+            "produit": item.produit?.idProduit != null
+                ? {"idProduit": item.produit!.idProduit}
+                : null,
+
+            "acteur": item.acteur?.idActeur != null
+                ? {"idActeur": item.acteur!.idActeur}
+                : null,
+
+            "niveau": item.niveau?.idNiveauApprovisionnement != null
+                ? {
+                    "idNiveauApprovisionnement":
+                        item.niveau!.idNiveauApprovisionnement
+                  }
+                : null,
+
+            // "marche": item.marche?.idMarche != null
+            //     ? {"idMarche": item.marche!.idMarche}
+            //     : null,
+
+            // "enqueteur": item.enqueteur?.idEnqueteur != null
+            //     ? {"idEnqueteur": item.enqueteur!.idEnqueteur}
+            //     : null,
+
+            // "enqueteCollecte":
+            //     item.enqueteCollecte?.numFiche != null
+            //         ? {"numFiche": item.enqueteCollecte!.numFiche}
+            //         : null,
+          };
+
+          // 🔥 Multipart request (IMPORTANT : dans la boucle)
+          var request = http.MultipartRequest(
+            'PUT',
+            Uri.parse("${API_URL}prix-marches/${item.codePrix}"),
+          );
+
+          // 🔥 JSON
+          request.fields['prixMarche'] = jsonEncode(formattedData);
+
+          // 🔥 Image
+          if (item.image != null && File(item.image!).existsSync()) {
+            request.files.add(
+              await http.MultipartFile.fromPath(
+                'image',
+                item.image!,
+                filename: "image_${item.idPrixMarche}.jpg",
+              ),
+            );
+          }
+
+          request.headers['Content-Type'] = 'multipart/form-data';
+
+          final response = await request.send();
+          final responseBody = await response.stream.bytesToString();
+
+          if (response.statusCode >= 200 && response.statusCode < 300) {
+            print("✅ Donnée synchronisée : $formattedData");
+
+            await DatabaseService.delete(
+              "PrixMarches",
+              "idPrixMarche",
+              item.idPrixMarche!,
+            );
+            success = true;
+          } else {
+            print("⚠️ Tentative $attempt/$retry échouée: $responseBody");
+          }
+        } catch (e) {
+          print("❌ Erreur tentative $attempt/$retry : $e");
+
+          if (attempt < retry) {
+            await Future.delayed(Duration(milliseconds: delay));
+          }
+        }
+      }
+
+      if (!success) {
+        failedItems.add(item);
+      }
+    }
+
+    // 🔥 Gestion des échecs
+    if (failedItems.isNotEmpty) {
+      print("❌ ${failedItems.length} élément(s) non synchronisé(s).");
+    } else {
+      // await deleteAllPrixMarchesReject();
+      print("✅ Toutes les données synchronisées !");
+    }
+
+    return failedItems.isEmpty;
+  } catch (e) {
+    print("❌ Erreur générale : $e");
+    return false;
+  }
+}
+
+Future<bool> syncDataMagasinUpdateServer() async {
+  try {
+    final List<PrixMagasin> localData =
+        await DatabaseService.getAllPrixMagasins();
+
+    if (localData.isEmpty) {
+      print("Aucune donnée à synchroniser.");
+      return false;
+    }
+
+    List<PrixMagasin> failedItems = [];
+
+    for (final item in localData) {
+      bool success = false;
+      int attempt = 0;
+
+      while (!success && attempt < retry) {
+        try {
+          attempt++;
+
+          // 🔥 JSON sécurisé
+          final formattedData = {
+            "codePrix": item.codePrix,
+            "prixBordChamp": int.tryParse(item.prixBordChamp ?? "0"),
+            "stockDisponible": double.tryParse(item.stockDisponible ?? "0"),
+            "variete": item.variete,
+            "uniteMesure": item.uniteMesure,
+            "age": int.tryParse(item.age ?? "0"),
+            "prixTransport": int.tryParse(item.prixTransport ?? "0"),
+            "uniteTransport": item.uniteTransport,
+            "moyenTransport": item.moyenTransport,
+            "prixVente": int.tryParse(item.prixVente ?? "0"),
+            "observation": item.observation,
+            "statut": item.statut,
+            "dateAjout": item.dateAjout,
+
+            // 🔥 relations (safe)
+            "bassinProduction": item.bassinProduction?.idBassin != null
+                ? {"idBassin": item.bassinProduction!.idBassin}
+                : null,
+
+            "magasin": item.magasin?.idMagasin != null
+                ? {"idMagasin": item.magasin!.idMagasin}
+                : null,
+
+            "produit": item.produit?.idProduit != null
+                ? {"idProduit": item.produit!.idProduit}
+                : null,
+
+            "niveau": item.niveau?.idNiveauApprovisionnement != null
+                ? {
+                    "idNiveauApprovisionnement":
+                        item.niveau!.idNiveauApprovisionnement
+                  }
+                : null,
+
+            // "enqueteur": item.enqueteur?.idEnqueteur != null
+            //     ? {"idEnqueteur": item.enqueteur!.idEnqueteur}
+            //     : null,
+
+            // "enqueteMagasin": item.enqueteMagasin?.numFiche != null
+            //     ? {"numFiche": item.enqueteMagasin!.numFiche}
+            //     : null,
+          };
+
+          // 🔥 Multipart request
+          var request = http.MultipartRequest(
+            'PUT',
+            Uri.parse("${API_URL}prix-magasins/${item.codePrix}"),
+          );
+
+          // 🔥 JSON
+          request.fields['prixMagasin'] = jsonEncode(formattedData);
+
+          // 🔥 Image
+          if (item.image != null && File(item.image!).existsSync()) {
+            request.files.add(
+              await http.MultipartFile.fromPath(
+                'image',
+                item.image!,
+                filename: "image_${item.idPrixMagasin}.jpg",
+              ),
+            );
+          }
+
+          request.headers['Content-Type'] = 'multipart/form-data';
+
+          final response = await request.send();
+          final responseBody = await response.stream.bytesToString();
+
+          if (response.statusCode >= 200 && response.statusCode < 300) {
+            print("✅ Donnée synchronisée : $formattedData");
+
+            await DatabaseService.delete(
+              "PrixMagasins",
+              "idPrixMagasin",
+              item.idPrixMagasin!,
+            );
+            success = true;
+          } else {
+            print("⚠️ Tentative $attempt/$retry échouée: $responseBody");
+          }
+        } catch (e) {
+          print("❌ Erreur tentative $attempt/$retry : $e");
+
+          if (attempt < retry) {
+            await Future.delayed(Duration(milliseconds: delay));
+          }
+        }
+      }
+
+      if (!success) {
+        failedItems.add(item);
+      }
+    }
+
+    // 🔥 Gestion des échecs
+    if (failedItems.isNotEmpty) {
+      print("❌ ${failedItems.length} élément(s) non synchronisé(s).");
+    } else {
+      // await deleteAllPrixMarchesReject();
+      print("✅ Toutes les données synchronisées !");
+    }
+
+    return failedItems.isEmpty;
+  } catch (e) {
+    print("❌ Erreur générale : $e");
     return false;
   }
 }

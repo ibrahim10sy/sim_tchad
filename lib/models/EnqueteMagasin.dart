@@ -9,7 +9,7 @@ class EnqueteMagasin {
   int? idEnquete;
   String numFiche;
   String dateEnquete;
-  String reference;
+  String? reference;
   Enqueteur? enqueteur;
   Magasin magasin;
   String? dateEnregistrement;
@@ -20,7 +20,7 @@ class EnqueteMagasin {
     this.idEnquete,
     required this.numFiche,
     required this.dateEnquete,
-    required this.reference,
+     this.reference,
     required this.enqueteur,
     required this.magasin,
     this.dateEnregistrement,
@@ -65,7 +65,7 @@ class EnqueteMagasin {
       idEnquete: json['idEnquete'],
       numFiche: json['numFiche'],
       dateEnquete: json['dateEnquete'],
-      reference: json['reference'],
+      reference: json['reference'] ?? '',
       enqueteur: parseEnqueteur(json['enqueteur']),
       magasin: parseMagasin(json['magasin']),
       dateEnregistrement: json['dateEnregistrement'],

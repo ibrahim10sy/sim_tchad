@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:sim_tchad/core/constants/app_colors.dart';
@@ -26,7 +28,7 @@ class _CollecteMagasinState extends State<CollecteMagasin> {
   String dateEnquete = DateFormat('dd/MM/yyyy').format(DateTime.now());
   DateTime selectedDate = DateTime.now();
   String numFiche = '';
-   bool isLoad = false;
+  bool isLoad = false;
 
   @override
   void initState() {
@@ -40,14 +42,17 @@ class _CollecteMagasinState extends State<CollecteMagasin> {
   }
 
   Future<void> _fetchDataLocal() async {
+    if (!mounted) return; 
     setState(() => isLoading = true);
     try {
       final data =
           await DatabaseService.getFicheByMagasin(widget.magasin!.nomMagasin);
+      if (!mounted) return; 
       setState(() {
         fiches = data.map((e) => EnqueteMagasin.fromJson(e)).toList();
       });
     } finally {
+      if (!mounted) return; 
       setState(() => isLoading = false);
     }
   }
@@ -100,35 +105,35 @@ class _CollecteMagasinState extends State<CollecteMagasin> {
     }
   }
 
-Future<void> handleSync(String numFiche) async {
-  setState(() => isLoad = true);
-  try {
-     await syncDataMagasinByFicheServer(widget.enqueteur!, numFiche);
-    
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Synchronisation réussie !"),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+  Future<void> handleSync(String numFiche) async {
+    setState(() => isLoad = true);
+    try {
+      await syncDataMagasinByFicheServer(widget.enqueteur!, numFiche);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Synchronisation réussie !"),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Erreur : ${e.toString()}"),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => isLoad = false);
+      await _fetchDataLocal();
     }
-  } catch (e) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Erreur : ${e.toString()}"),
-          backgroundColor: Colors.redAccent,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
-  } finally {
-    if (mounted) setState(() => isLoad = false);
-    await _fetchDataLocal();
   }
-}
 
   Future<void> handleSave() async {
     if (numFiche.isEmpty || dateEnquete.isEmpty) return;
@@ -301,6 +306,19 @@ Future<void> handleSync(String numFiche) async {
     );
   }
 
+  Future<void> _getResultFromNextScreens(
+      BuildContext context, EnqueteMagasin en) async {
+    final result = await Navigator.push(context,
+        MaterialPageRoute(builder: (_) => DetailMagasin(enqueteMagasin: en)));
+    log(result.toString());
+    if (result == true) {
+      print("Rafraichissement en cours");
+
+      if (!mounted) return;
+      await _fetchDataLocal();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -330,7 +348,7 @@ Future<void> handleSync(String numFiche) async {
               ),
             ],
           ),
-           if (isLoad)
+          if (isLoad)
             Container(
               color: Colors.black.withOpacity(
                   0.5), // Un peu plus sombre pour faire ressortir le message
@@ -378,72 +396,68 @@ Future<void> handleSync(String numFiche) async {
 
   Widget _buildHeader() {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.only(top: 50, bottom: 25, left: 20, right: 20),
+      // On réduit drastiquement le padding
+      padding: EdgeInsets.only(
+          top: MediaQuery.of(context).padding.top + 10,
+          bottom: 15,
+          left: 10,
+          right: 15),
       decoration: const BoxDecoration(
         color: AppColors.institutionalGreen,
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(32),
-          bottomRight: Radius.circular(32),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black26,
-            blurRadius: 15,
-            offset: Offset(0, 4),
-          ),
-        ],
+        // On retire les gros arrondis et l'ombre portée pour gagner de l'espace visuel
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              // Bouton retour plus compact
               IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                    color: Colors.white, size: 20),
+                icon: const Icon(Icons.arrow_back_rounded,
+                    color: Colors.white, size: 24),
                 onPressed: () => Navigator.pop(context),
-                padding: EdgeInsets.zero,
               ),
-              // Badge du nombre de fiches
+              const SizedBox(width: 5),
+              // Titre et Sous-titre sur la même colonne mais très serrés
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.magasin?.nomMagasin ?? "Détails",
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18, // Taille réduite
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      "Zone : ${widget.magasin?.commune?.nom ?? 'N/A'}",
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.8),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Petit badge discret
               Container(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(20),
+                  color: Colors.white.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  "${fiches.length} Fiches",
+                  "${fiches.length} fiches",
                   style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 15),
-          Text(
-            widget.magasin?.nomMagasin ?? "Détails Magasin",
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.5,
-            ),
-          ),
-          const SizedBox(height: 5),
-          Row(
-            children: [
-              const Icon(Icons.location_on_rounded,
-                  color: AppColors.lightGreen, size: 16),
-              const SizedBox(width: 5),
-              Text(
-                "Zone de collecte : ${widget.magasin!.commune!.nom}", // Exemple dynamique
-                style: TextStyle(
-                    color: Colors.white.withOpacity(0.8), fontSize: 14),
               ),
             ],
           ),
@@ -463,14 +477,7 @@ Future<void> handleSync(String numFiche) async {
         return FicheCollecteCard(
           numFiche: fiche.numFiche ?? "N/A",
           date: fiche.dateEnquete ?? "N/A",
-          onDetail: () {
-            Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (_) => DetailMagasin(
-                          enqueteMagasin: fiche,
-                        )));
-          },
+          onDetail: () => _getResultFromNextScreens(context, fiche),
           onAddProduct: () {
             Navigator.push(
                 context,

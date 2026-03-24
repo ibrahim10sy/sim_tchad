@@ -89,7 +89,7 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
               ),
               const SizedBox(height: 24),
               const Text(
-                "SIM Tchad",
+                "e-AgriSouk",
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 32,

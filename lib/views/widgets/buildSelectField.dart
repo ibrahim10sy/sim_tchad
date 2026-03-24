@@ -44,21 +44,27 @@ class SelectField extends StatelessWidget {
                   RichText(
                     text: TextSpan(
                       text: label,
-                      style: const TextStyle(color: AppColors.darkGrey, fontSize: 10),
+                      style: const TextStyle(
+                          color: AppColors.darkGrey, fontSize: 10),
                       children: [
                         if (isRequired)
                           const TextSpan(
                             text: ' *',
-                            style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                                color: Colors.red, fontWeight: FontWeight.bold),
                           ),
                       ],
                     ),
                   ),
                   Text(
                     value.isEmpty ? "Sélectionner..." : value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: value.isEmpty ? FontWeight.normal : FontWeight.bold),
+                        fontSize: 13,
+                        fontWeight: value.isEmpty
+                            ? FontWeight.normal
+                            : FontWeight.bold),
                   ),
                 ],
               ),

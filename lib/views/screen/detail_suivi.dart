@@ -8,6 +8,7 @@ import 'package:sim_tchad/models/Enqueteur.dart';
 import 'package:sim_tchad/models/SuiviFlux.dart';
 import 'package:sim_tchad/services/auth_service.dart';
 import 'package:sim_tchad/utils/database_service.dart';
+import 'package:sim_tchad/utils/server_service.dart';
 import 'package:sim_tchad/views/screen/add_suivi.dart';
 import 'package:sim_tchad/views/widgets/ProduitCollecteCard.dart';
 
@@ -25,6 +26,7 @@ class _DetailSuiviState extends State<DetailSuivi> {
   List<SuiviFlux> allFiches = []; // Liste originale
   List<SuiviFlux> filteredFiches = []; // Liste pour l'affichage
   String searchQuery = "";
+  bool isLoad = false;
 
   @override
   void initState() {
@@ -48,8 +50,8 @@ class _DetailSuiviState extends State<DetailSuivi> {
     if (enqueteur == null) return;
     setState(() => isLoading = true);
     try {
-      final suiviData = await DatabaseService.getSuiviByNum(
-          widget.enqueteSuivi!.numFiche);
+      final suiviData =
+          await DatabaseService.getSuiviByNum(widget.enqueteSuivi!.numFiche);
       setState(() {
         allFiches = suiviData;
         _applyFilter(searchQuery); // Ré-appliquer le filtre après recharge
@@ -59,13 +61,45 @@ class _DetailSuiviState extends State<DetailSuivi> {
     }
   }
 
+  Future<void> handleSync() async {
+    setState(() => isLoad = true);
+    try {
+      await syncDataSuiviByFicheServer(
+          widget.enqueteSuivi!.enqueteur!, widget.enqueteSuivi!.numFiche);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Synchronisation réussie !"),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      Navigator.pop(context, true);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Erreur de synchroniation. Veuillez réessayer"),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => isLoad = false);
+      await _fetchDataLocal();
+    }
+  }
+
   Future<void> _getResultFromNextScreens(
       BuildContext context, EnqueteSuivi en, SuiviFlux p) async {
     final result = await Navigator.push(
         context,
         MaterialPageRoute(
-            builder: (_) => AddSuivi(
-                isEdit: true, enqueteSuivi: en, suivi: p)));
+            builder: (_) =>
+                AddSuivi(isEdit: true, enqueteSuivi: en, suivi: p)));
     log(result.toString());
     if (result == true) {
       print("Rafraichissement en cours");
@@ -95,7 +129,7 @@ class _DetailSuiviState extends State<DetailSuivi> {
     _fetchDataLocal();
   }
 
- @override
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.lightGrey,
@@ -130,10 +164,8 @@ class _DetailSuiviState extends State<DetailSuivi> {
                                   .enqueteSuivi!
                                   .commune!
                                   .nom,
-                              onEdit: () => _getResultFromNextScreens(
-                                  context,
-                                  widget.enqueteSuivi!,
-                                  filteredFiches[index]),
+                              onEdit: () => _getResultFromNextScreens(context,
+                                  widget.enqueteSuivi!, filteredFiches[index]),
                               onDelete: () => _showDeleteConfirm(
                                   filteredFiches[index].idSuivi!),
                             );
@@ -151,7 +183,7 @@ class _DetailSuiviState extends State<DetailSuivi> {
       // ),
     );
   }
-
+ 
   // --- Widget En-tête Informations ---
   Widget _buildInfoEnqueteHeader() {
     final e = widget.enqueteSuivi;
@@ -191,6 +223,46 @@ class _DetailSuiviState extends State<DetailSuivi> {
     );
   }
 
+  Future<void> _showSyncConfirm() async {
+    return showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text(
+            "Confirmation",
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          content: const Text(
+            "Voulez-vous lancer la synchronisation des données avec le serveur ?",
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child:
+                  const Text("ANNULER", style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Ferme le dialogue
+                handleSync(); // Lance la sync
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.institutionalGreen,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: const Text("SYNCHRONISER",
+                  style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Widget _headerInfoItem(IconData icon, String text) {
     return Row(
       children: [
@@ -217,21 +289,67 @@ class _DetailSuiviState extends State<DetailSuivi> {
 
   // --- Widget Barre de recherche ---
   Widget _buildSearchBar() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      child: TextField(
-        onChanged: _applyFilter,
-        decoration: InputDecoration(
-          hintText: "Rechercher un ...",
-          prefixIcon: const Icon(Icons.search, color: AppColors.primaryGreen),
-          filled: true,
-          fillColor: Colors.white,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: TextField(
+                onChanged: _applyFilter,
+                style: const TextStyle(fontSize: 14),
+                decoration: InputDecoration(
+                  hintText: "Rechercher un produit...",
+                  hintStyle: TextStyle(
+                    color: Colors.grey,
+                    fontSize: 14,
+                  ),
+                  prefixIcon: const Icon(
+                    Icons.search,
+                    size: 20,
+                    color: AppColors.institutionalGreen,
+                  ),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(15),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                ),
+              ),
+            ),
           ),
-          contentPadding: const EdgeInsets.symmetric(vertical: 0),
-        ),
+          const SizedBox(width: 12),
+          Material(
+            color: AppColors.institutionalGreen.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(15),
+            child: InkWell(
+              onTap: _showSyncConfirm, // Appel de la confirmation ici
+              borderRadius: BorderRadius.circular(15),
+              child: const Padding(
+                padding: EdgeInsets.all(12),
+                child: Icon(
+                  Icons.cloud_sync_rounded,
+                  color: AppColors.institutionalGreen,
+                  size: 26,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

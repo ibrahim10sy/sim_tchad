@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:sim_tchad/core/constants/app_colors.dart';
@@ -39,14 +41,17 @@ class _CollecteMarcheState extends State<CollecteMarche> {
   }
 
   Future<void> _fetchDataLocal() async {
+    if (!mounted) return; 
     setState(() => isLoading = true);
     try {
       final data =
           await DatabaseService.getFicheByMarche(widget.marche!.nomMarche);
+      if (!mounted) return; 
       setState(() {
         fiches = data.map((e) => EnqueteCollecte.fromJson(e)).toList();
       });
     } finally {
+      if (!mounted) return; 
       setState(() => isLoading = false);
     }
   }
@@ -100,54 +105,47 @@ class _CollecteMarcheState extends State<CollecteMarche> {
   }
 
   Future<void> handleSync(String numFiche) async {
-  setState(() => isLoad = true);
-  try {
-     await syncDataMarcheByFicheServer(widget.enqueteur!, numFiche);
-    
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Synchronisation réussie !"),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+    setState(() => isLoad = true);
+    try {
+      await syncDataMarcheByFicheServer(widget.enqueteur!, numFiche);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Synchronisation réussie !"),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Erreur : ${e.toString()}"),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => isLoad = false);
+      await _fetchDataLocal();
     }
-  } catch (e) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Erreur : ${e.toString()}"),
-          backgroundColor: Colors.redAccent,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
-  } finally {
-    if (mounted) setState(() => isLoad = false);
-    await _fetchDataLocal();
   }
-}
 
-  // Future<void> handleSync(String numFiche) async {
-  //   setState(() => isLoad = true);
+  Future<void> _getResultFromNextScreens(
+      BuildContext context, EnqueteCollecte en) async {
+    final result = await Navigator.push(context,
+        MaterialPageRoute(builder: (_) => DetailMarche(enqueteCollecte: en)));
+    log(result.toString());
+    if (result == true) {
+      print("Rafraichissement en cours");
 
-  //   try {
-  //     await syncDataMarcheByFicheServer(widget.enqueteur!, numFiche);
-  //     // Optionnel : Ajouter un petit message de succès ici via un SnackBar
-  //   } catch (e) {
-  //     print("Erreur sync ${e.toString()}");
-  //     // Afficher une alerte si erreur
-  //   } finally {
-  //     // Le bloc finally s'exécute quoi qu'il arrive (succès ou erreur)
-  //     if (mounted) {
-  //       setState(() => isLoad = false);
-  //     }
-  //   }
-
-  //   await _fetchDataLocal();
-  // }
-
+      if (!mounted) return;
+      await _fetchDataLocal();
+    }
+  }
 
   Future<void> handleSave() async {
     if (numFiche.isEmpty || dateEnquete.isEmpty) return;
@@ -400,80 +398,59 @@ class _CollecteMarcheState extends State<CollecteMarche> {
 
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.only(top: 45, bottom: 20, left: 15, right: 15),
+      // On réduit drastiquement le padding
+      padding: EdgeInsets.only(
+          top: MediaQuery.of(context).padding.top + 10,
+          bottom: 15,
+          left: 10,
+          right: 15),
       decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            AppColors.institutionalGreen,
-            Color(0xFF1B5E20)
-          ], // Dégradé léger pour la profondeur
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(24),
-          bottomRight: Radius.circular(24),
-        ),
+        color: AppColors.institutionalGreen,
+        // On retire les gros arrondis et l'ombre portée pour gagner de l'espace visuel
       ),
       child: Column(
-        mainAxisSize: MainAxisSize.min, // Prend juste la place nécessaire
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             children: [
-              // Bouton retour discret
-              InkWell(
-                onTap: () => Navigator.pop(context),
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.15),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.arrow_back_rounded,
-                      color: Colors.white, size: 20),
-                ),
+              // Bouton retour plus compact
+              IconButton(
+                icon: const Icon(Icons.arrow_back_rounded,
+                    color: Colors.white, size: 24),
+                onPressed: () => Navigator.pop(context),
               ),
-              const SizedBox(width: 15),
-              // Titre et Sous-titre
+              const SizedBox(width: 5),
+              // Titre et Sous-titre sur la même colonne mais très serrés
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       widget.marche?.nomMarche ?? "Détails",
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 18,
+                        fontSize: 18, // Taille réduite
                         fontWeight: FontWeight.bold,
                       ),
-                      overflow: TextOverflow.ellipsis,
                     ),
-                    Row(
-                      children: [
-                        const Icon(Icons.location_on_rounded,
-                            color: Colors.white70, size: 12),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            widget.marche?.commune?.nom ?? "Zone inconnue",
-                            style: TextStyle(
-                                color: Colors.white.withOpacity(0.7),
-                                fontSize: 12),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
+                    Text(
+                      "Zone : ${widget.marche?.commune.nom ?? 'N/A'}",
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.8),
+                        fontSize: 12,
+                      ),
                     ),
                   ],
                 ),
               ),
-              // Badge compact
+              // Petit badge discret
               Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.orangeAccent
-                      .withOpacity(0.9), // Couleur contrastée pour le badge
+                  color: Colors.white.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -481,7 +458,7 @@ class _CollecteMarcheState extends State<CollecteMarche> {
                   style: const TextStyle(
                       color: Colors.white,
                       fontSize: 11,
-                      fontWeight: FontWeight.w900),
+                      fontWeight: FontWeight.w600),
                 ),
               ),
             ],
@@ -502,14 +479,7 @@ class _CollecteMarcheState extends State<CollecteMarche> {
         return FicheCollecteCard(
           numFiche: fiche.numFiche ?? "N/A",
           date: fiche.dateEnquete ?? "N/A",
-          onDetail: () {
-            Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (_) => DetailMarche(
-                          enqueteCollecte: fiche,
-                        )));
-          },
+          onDetail: () => _getResultFromNextScreens(context, fiche),
           onAddProduct: () {
             Navigator.push(
                 context,

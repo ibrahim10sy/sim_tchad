@@ -17,27 +17,22 @@ import 'package:sim_tchad/views/widgets/buildSelectField.dart';
 import 'package:sim_tchad/views/widgets/showCustomSelector.dart';
 import 'package:image_picker/image_picker.dart';
 
-class AddProduitMagasin extends StatefulWidget {
-  bool? isEdit;
-  Magasin? magasin;
+class UpdatePrixMagasin extends StatefulWidget {
+   Magasin? magasin;
   Enqueteur? enqueteur;
   EnqueteMagasin? enqueteMagasin;
   PrixMagasin? prixMagasin;
-
-  AddProduitMagasin(
-      {super.key,
-      this.enqueteur,
+   UpdatePrixMagasin({super.key,  this.enqueteur,
       this.magasin,
       this.enqueteMagasin,
-      this.prixMagasin,
-      this.isEdit});
+      this.prixMagasin,});
 
   @override
-  State<AddProduitMagasin> createState() => _AddProduitMagasinState();
+  State<UpdatePrixMagasin> createState() => _UpdatePrixMagasinState();
 }
 
-class _AddProduitMagasinState extends State<AddProduitMagasin> {
-  final TextEditingController prixVenteController = TextEditingController();
+class _UpdatePrixMagasinState extends State<UpdatePrixMagasin> {
+   final TextEditingController prixVenteController = TextEditingController();
   final TextEditingController prixTransportController = TextEditingController();
   final TextEditingController ageController = TextEditingController();
   final TextEditingController moyenController = TextEditingController();
@@ -89,7 +84,7 @@ class _AddProduitMagasinState extends State<AddProduitMagasin> {
   void initState() {
     super.initState();
 
-    if (widget.isEdit == true && widget.prixMagasin != null) {
+    if (widget.prixMagasin != null) {
       p = widget.prixMagasin!;
       // print("donnee recu ${widget.prixMagasin!.image! ?? "aucun chemin"}");
 
@@ -184,7 +179,7 @@ class _AddProduitMagasinState extends State<AddProduitMagasin> {
       });
 
       // 🔥 IMPORTANT : RECONSTRUCTION DES SELECTED
-      if (widget.isEdit == true && p != null) {
+      if (p != null) {
         setState(() {
           // ✅ Variété
           if (p!.variete != null) {
@@ -234,10 +229,6 @@ class _AddProduitMagasinState extends State<AddProduitMagasin> {
         prixBordChampController == null ||
         prixBordChampController == null ||
         selectedNiveau == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text("Veuillez renseigné tout les champs obligatoire")),
-      );
       return;
     }
 
@@ -273,22 +264,17 @@ class _AddProduitMagasinState extends State<AddProduitMagasin> {
           dateAjout: DateTime.now().toString(),
           image: pathImageToSave);
 
-      if (widget.isEdit == true) {
         await DatabaseService.update(
-          "PrixMagasin",
+          "PrixMagasins",
           data.toJson(),
           "idPrixMagasin",
           p!.idPrixMagasin,
         );
-      } else {
-        await DatabaseService.insert("PrixMagasin", data.toJson());
-      }
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(widget.isEdit!
-              ? "Produit modifié avec succès"
-              : "Produit enregistré avec succès"),
+          content: Text("Produit modifié avec succès"
+              ),
         ),
       );
 
@@ -308,11 +294,9 @@ class _AddProduitMagasinState extends State<AddProduitMagasin> {
     return Scaffold(
       backgroundColor: AppColors.lightGrey,
       appBar: AppBar(
-        title: widget.isEdit == true
-            ? Text("Modification",
+        title:  Text("Modification",
                 style: const TextStyle(fontWeight: FontWeight.bold))
-            : Text(widget.magasin!.nomMagasin,
-                style: const TextStyle(fontWeight: FontWeight.bold)),
+            ,
         backgroundColor: AppColors.institutionalGreen,
         foregroundColor: Colors.white,
         elevation: 0,
@@ -704,7 +688,7 @@ class _AddProduitMagasinState extends State<AddProduitMagasin> {
             padding: const EdgeInsets.symmetric(vertical: 14),
           ),
           child: Text(
-            widget.isEdit! ? "Modifier" : "Enregistrer",
+           "Modifier",
             style: const TextStyle(fontSize: 16, color: Colors.white),
           ),
         ),
@@ -846,64 +830,5 @@ class _AddProduitMagasinState extends State<AddProduitMagasin> {
       ),
     );
   }
-  // Widget _buildImageSection() {
-  //   return _buildCardWrapper([
-  //     Column(
-  //       crossAxisAlignment: CrossAxisAlignment.start,
-  //       children: [
-  //         const Text("Photo du produit (Facultatif)",
-  //             style: TextStyle(
-  //                 fontSize: 12,
-  //                 fontWeight: FontWeight.bold,
-  //                 color: AppColors.darkGrey)),
-  //         const SizedBox(height: 10),
-  //         InkWell(
-  //           onTap: _pickImage,
-  //           child: Container(
-  //             width: double.infinity,
-  //             height: 150,
-  //             decoration: BoxDecoration(
-  //               color: AppColors.lightGrey.withOpacity(0.5),
-  //               borderRadius: BorderRadius.circular(10),
-  //               border: Border.all(color: Colors.grey.withOpacity(0.3)),
-  //             ),
-  //             child: _imageFile == null
-  //                 ? const Column(
-  //                     mainAxisAlignment: MainAxisAlignment.center,
-  //                     children: [
-  //                       Icon(Icons.camera_alt_outlined,
-  //                           size: 40, color: AppColors.primaryGreen),
-  //                       Text("Cliquez pour prendre une photo",
-  //                           style: TextStyle(fontSize: 12)),
-  //                     ],
-  //                   )
-  //                 : Stack(
-  //                     fit: StackFit.expand,
-  //                     children: [
-  //                       ClipRRect(
-  //                         borderRadius: BorderRadius.circular(10),
-  //                         child: Image.file(_imageFile!, fit: BoxFit.cover),
-  //                       ),
-  //                       Positioned(
-  //                         right: 8,
-  //                         top: 8,
-  //                         child: CircleAvatar(
-  //                           backgroundColor: Colors.red,
-  //                           radius: 15,
-  //                           child: IconButton(
-  //                             icon: const Icon(Icons.close,
-  //                                 size: 15, color: Colors.white),
-  //                             onPressed: () =>
-  //                                 setState(() => _imageFile = null),
-  //                           ),
-  //                         ),
-  //                       )
-  //                     ],
-  //                   ),
-  //           ),
-  //         ),
-  //       ],
-  //     ),
-  //   ]);
-  // }
+ 
 }

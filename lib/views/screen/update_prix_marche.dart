@@ -11,8 +11,6 @@ import 'package:sim_tchad/models/Marche.dart';
 import 'package:sim_tchad/models/NiveauApprovisionnement.dart';
 import 'package:sim_tchad/models/PrixMarche.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:sim_tchad/models/Produit.dart';
 import 'package:sim_tchad/models/Unite.dart';
 import 'package:sim_tchad/models/Variete.dart';
@@ -20,29 +18,24 @@ import 'package:sim_tchad/utils/database_service.dart';
 import 'package:sim_tchad/views/widgets/buildSelectField.dart';
 import 'package:sim_tchad/views/widgets/showCustomSelector.dart';
 
-class AddProduitMarche extends StatefulWidget {
-  final bool? isEdit;
+class UpdatePrixMarche extends StatefulWidget {
   final Marche? marche;
   final Enqueteur? enqueteur;
   final EnqueteCollecte? enqueteCollecte;
   final PrixMarche? prixMarche;
-
-  AddProduitMarche({
+  UpdatePrixMarche({
     super.key,
     this.enqueteCollecte,
     this.enqueteur,
-    this.isEdit = false,
     this.marche,
     this.prixMarche,
   });
 
   @override
-  State<AddProduitMarche> createState() => _AddProduitMarcheState();
+  State<UpdatePrixMarche> createState() => _UpdatePrixMarcheState();
 }
 
-class _AddProduitMarcheState extends State<AddProduitMarche> {
-  final _formKey = GlobalKey<FormState>();
-
+class _UpdatePrixMarcheState extends State<UpdatePrixMarche> {
   // Contrôleurs pour les champs de texte
   final TextEditingController _prix1Controller = TextEditingController();
   final TextEditingController _prix2Controller = TextEditingController();
@@ -150,7 +143,7 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
   void initState() {
     super.initState();
     _fetchDataLocal();
-    if (widget.isEdit == true && widget.prixMarche != null) {
+    if (widget.prixMarche != null) {
       _initData();
     }
   }
@@ -192,7 +185,6 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
   }
 
   Future<void> _fetchDataLocal() async {
-    if (!mounted) return; 
     setState(() => isLoading = true);
 
     try {
@@ -205,7 +197,6 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
       final catData = await DatabaseService.getAll("CategorieProduit");
       final acteurs = await DatabaseService.getAll("Acteur");
 
-      if (!mounted) return; 
       setState(() {
         niveaux = niveauxData
             .map((m) => NiveauApprovisionnement.fromJson(m))
@@ -219,7 +210,7 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
       });
 
       // 🔥 IMPORTANT : RECONSTRUCTION DES SELECTED
-      if (widget.isEdit == true && p != null) {
+      if (p != null) {
         setState(() {
           // ✅ Variété
           if (p!.variete != null) {
@@ -265,11 +256,8 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
     return Scaffold(
       backgroundColor: AppColors.lightGrey,
       appBar: AppBar(
-        title: widget.isEdit == true
-            ? Text("Modification",
-                style: const TextStyle(fontWeight: FontWeight.bold))
-            : Text(widget.marche!.nomMarche,
-                style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text("Modification",
+            style: const TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: AppColors.institutionalGreen,
         foregroundColor: Colors.white,
         elevation: 0,
@@ -857,7 +845,7 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
             padding: const EdgeInsets.symmetric(vertical: 14),
           ),
           child: Text(
-            widget.isEdit! ? "Modifier" : "Enregistrer",
+            "Modifier",
             style: const TextStyle(fontSize: 16, color: Colors.white),
           ),
         ),
@@ -936,6 +924,7 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
 
     try {
       final data = PrixMarche(
+        // codePrix: p!.codePrix!,
         variete: selectedVariete!.libelle ?? "",
         prixUnite1: safeText(_prix1Controller)!,
         prixUnite2: safeText(_prix2Controller)!,
@@ -961,23 +950,16 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
         image: pathImageToSave,
       );
 
-      if (widget.isEdit == true) {
-        await DatabaseService.update(
-          "PrixMarche",
-          data.toJson(),
-          "idPrixMarche",
-          p!.idPrixMarche,
-        );
-      } else {
-        await DatabaseService.insert("PrixMarche", data.toJson());
-        print("data ${data.toJson()}");
-      }
+      await DatabaseService.update(
+        "PrixMarches",
+        data.toJson(),
+        "idPrixMarche",
+        p!.idPrixMarche,
+      );
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(widget.isEdit!
-              ? "Produit modifié avec succès"
-              : "Produit enregistré avec succès"),
+          content: Text("Produit modifié avec succès"),
         ),
       );
 

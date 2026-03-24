@@ -29,7 +29,7 @@ class _HomePageState extends State<HomePage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     loadUser();
   }
 
@@ -44,6 +44,73 @@ class _HomePageState extends State<HomePage>
 
     // Map des tables avec leurs colonnes autorisées
     final Map<String, List<String>> allowedColumns = {
+      "PrixMarches": [
+        'idPrixMarche',
+        'codePrix',
+        'image',
+        'variete',
+        'age',
+        'prixUnite1',
+        'prixUnite2',
+        'prixUnite3',
+        'prixTransport',
+        'fournisseur',
+        'qualiteProduit',
+        'clientPrincipal',
+        'uniteTransport',
+        'moyenTransport',
+        'etatRoute',
+        'origineProduit',
+        'observation',
+        'dateAjout',
+        'dateModif',
+        'uniteMesure2',
+        'uniteMesure3',
+        'produit',
+        'acteur',
+        'niveau',
+        'marche',
+        'enqueteCollecte'
+      ],
+      "PrixMagasins": [
+        'idPrixMagasin',
+        'codePrix',
+        'variete',
+        'uniteMesure',
+        'age',
+        'image',
+        'prixBordChamp',
+        'stockDisponible',
+        'prixTransport',
+        'uniteTransport',
+        'moyenTransport',
+        'prixVente',
+        'observation',
+        'dateAjout',
+        'qualiteProduit',
+        'bassinProduction',
+        'magasin',
+        'produit',
+        'niveau',
+        'enqueteMagasin'
+      ],
+      "SuiviFluxs": [
+        'idSuivi',
+        'observation',
+        'fluxEntrantTonne',
+        'fluxSortantTonne',
+        'disponibilite',
+        'difficulte',
+        'prixBordChamp',
+        'stockDisponible',
+        'dateCollecte',
+        'dateAjout',
+        'produit',
+        'dateAjout',
+        'niveau',
+        'enqueteSuivi',
+        'commune'
+      ],
       "Produit": [
         'idProduit',
         'codeProduit',
@@ -114,59 +181,7 @@ class _HomePageState extends State<HomePage>
         'codeCategorie',
         'libelle',
         'filiere'
-      ],
-      "PrixMarches": [
-        'idPrixMarche',
-        'codePrix',
-        'image',
-        'variete',
-        'age',
-        'prixUnite1',
-        'prixUnite2',
-        'prixUnite3',
-        'prixTransport',
-        'fournisseur',
-        'qualiteProduit',
-        'clientPrincipal',
-        'uniteTransport',
-        'moyenTransport',
-        'etatRoute',
-        'origineProduit',
-        'observation',
-        'dateAjout',
-        'dateModif',
-        'uniteMesure2',
-        'uniteMesure3',
-        'produit',
-        'acteur',
-        'niveau',
-        'marche',
-        'enqueteur',
-        'enqueteCollecte'
-      ],
-      "PrixMagasins": [
-        'idPrixMagasin',
-        'codePrix',
-        'variete',
-        'uniteMesure',
-        'age',
-        'image',
-        'prixBordChamp',
-        'stockDisponible',
-        'prixTransport',
-        'uniteTransport',
-        'moyenTransport',
-        'prixVente',
-        'observation',
-        'dateAjout',
-        'qualiteProduit',
-        'bassinProduction',
-        'magasin',
-        'produit',
-        'niveau',
-        'enqueteur',
-        'enqueteMagasin'
-      ],
+      ]
     };
 
     // Liste des ressources à synchroniser
@@ -182,6 +197,17 @@ class _HomePageState extends State<HomePage>
       ["marches/enqueteur/$codeEnqueteur", "Marche", "Marchés"],
       ["magasins/acteur/$codeActeur", "Magasin", "Magasins"],
       ["categories", "CategorieProduit", "Categories"],
+      [
+        "prix-marches/enqueteur/$codeEnqueteur/not-validated",
+        "PrixMarches",
+        "PrixMarche"
+      ],
+      [
+        "prix-magasins/enqueteur/$codeEnqueteur/not-validated",
+        "PrixMagasins",
+        "PrixMagasin"
+      ],
+      ["suivis/enqueteur/$codeEnqueteur/pending", "SuiviFluxs", "SuiviFlux"]
     ];
 
     for (var r in resources) {
@@ -215,8 +241,8 @@ class _HomePageState extends State<HomePage>
 
     try {
       await handleFetchData(
-        enqueteur!.codeEnqueteur,
-        enqueteur!.acteur!.codeActeur!,
+        enqueteur!.codeEnqueteur!,
+        enqueteur!.acteur!.codeActeur,
         (progress) {
           setState(() {
             syncProgress = progress;
@@ -279,7 +305,7 @@ class _HomePageState extends State<HomePage>
               controller: _tabController,
               children: const [
                 AffectPage(),
-                EncourPage(),
+                // EncourPage(),
                 AchevePage(),
                 RejetPage(),
               ],
@@ -341,7 +367,7 @@ class _HomePageState extends State<HomePage>
                           ),
                         ),
                         Text(
-                          "SIM Tchad • Collecte de données",
+                          "e-AgriSouk • Collecte de données",
                           style: TextStyle(
                             color: Colors.white.withOpacity(0.7),
                             fontSize: 12,
@@ -389,7 +415,7 @@ class _HomePageState extends State<HomePage>
       ),
       tabs: const [
         Tab(text: "Affectées"),
-        Tab(text: "En cours"),
+        // Tab(text: "En cours"),
         Tab(text: "Achevées"),
         Tab(text: "Rejetées"),
       ],
@@ -403,14 +429,16 @@ class _HomePageState extends State<HomePage>
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         title: const Text("Déconnexion",
             style: TextStyle(fontWeight: FontWeight.bold)),
-        content: const Text("Voulez-vous vraiment quitter l'application ?"),
+        content: const Text(
+          "Voulez-vous vraiment quitter l'application ? Notez que toute déconnexion entraînera la suppression de toutes les données.",
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text("Annuler", style: TextStyle(color: Colors.grey)),
           ),
           TextButton(
-            onPressed: () {},
+            onPressed: () => AuthService.logout(context),
             child: const Text("Déconnexion",
                 style: TextStyle(
                     color: Colors.redAccent, fontWeight: FontWeight.bold)),

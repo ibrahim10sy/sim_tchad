@@ -16,7 +16,7 @@ class NiveauApprovisionnement {
       idNiveauApprovisionnement: json['idNiveauApprovisionnement'],
       codeNiveau: json['codeNiveau'],
       libelle: json['libelle'],
-      description: json['description'],
+      description: json['description'] ?? '',
     );
   }
 

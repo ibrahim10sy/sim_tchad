@@ -326,6 +326,7 @@ Future<Database> openDatabaseConnection() async {
   await db.execute('''
   CREATE TABLE IF NOT EXISTS SuiviFluxs (
    idSuivi  INTEGER PRIMARY KEY,
+          codeSuivi TEXT,
           observation TEXT,
           fluxEntrantTonne REAL,
           fluxSortantTonne REAL,
@@ -435,7 +436,7 @@ Future<Database> openDatabaseConnection() async {
   ''');
 
   await db.execute('''
-  CREATE TABLE IF NOT EXISTS  BassinProduction (
+  CREATE TABLE IF NOT EXISTS BassinProduction (
           idBassin INTEGER PRIMARY KEY,
           codeBassin TEXT,
           libelle TEXT

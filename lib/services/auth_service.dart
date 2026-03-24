@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:sim_tchad/utils/database_service.dart';
 
 import '../core/constants/app_constants.dart';
 import 'api_service.dart';
@@ -26,8 +27,9 @@ class AuthService {
 
       if (localLogin) {
         print("Connexion locale OK");
-        if (!context.mounted) return;
-        Navigator.pushReplacementNamed(context, "/home");
+        if (context.mounted) {
+          Navigator.of(context).pushReplacementNamed("/home");
+        }
         return;
       }
 
@@ -37,8 +39,9 @@ class AuthService {
 
       if (onlineLogin) {
         print("Connexion en ligne OK");
-        if (!context.mounted) return;
-        Navigator.pushReplacementNamed(context, "/home");
+        if (context.mounted) {
+  Navigator.of(context).pushReplacementNamed("/home");
+}
       }
     } catch (e) {
       print("Erreur login: $e");
@@ -77,33 +80,63 @@ static Future<bool> resetPassword(String codeEnqueteur, String newPassword) asyn
 }
 
   /// Login en ligne et stockage du token uniquement
-  static Future<bool> login(String codeEnqueteur, String password) async {
-  final response = await http.post(
-    Uri.parse("${baseUrl}enqueteurs/login"),
-    headers: {"Content-Type": "application/json"},
-    body: jsonEncode({"codeEnqueteur": codeEnqueteur, "password": password}),
-  );
+//   static Future<bool> login(String codeEnqueteur, String password) async {
+//   final response = await http.post(
+//     Uri.parse("${baseUrl}enqueteurs/login"),
+//     headers: {"Content-Type": "application/json"},
+//     body: jsonEncode({"codeEnqueteur": codeEnqueteur, "password": password}),
+//   );
 
-  print('login response: ${response.statusCode} - ${response.body}');
+//   print('login response: ${response.statusCode} - ${response.body}');
 
-  if (response.statusCode == 200) {
-    final data = jsonDecode(response.body);
+//   if (response.statusCode == 200) {
+//     final data = jsonDecode(response.body);
 
-    final prefs = await SharedPreferences.getInstance();
+//     final prefs = await SharedPreferences.getInstance();
 
-    // 🔹 Stocker le token si disponible (ici pas de token, donc stocker idEnqueteur)
-    await prefs.setString("authToken", jsonEncode(data)); // On garde toutes les infos utilisateur
+//     // 🔹 Stocker le token si disponible (ici pas de token, donc stocker idEnqueteur)
+//     await prefs.setString("authToken", jsonEncode(data)); // On garde toutes les infos utilisateur
 
-    // 🔹 Stockage pour login offline (optionnel)
-    await prefs.setString(
-      "userLogin",
-      jsonEncode({"codeEnqueteur": codeEnqueteur, "password": password}),
+//     // 🔹 Stockage pour login offline (optionnel)
+//     await prefs.setString(
+//       "userLogin",
+//       jsonEncode({"codeEnqueteur": codeEnqueteur, "password": password}),
+//     );
+
+//     print("Utilisateur connecté stocké localement");
+//     return true;
+//   } else {
+//     throw Exception("Identifiants incorrects");
+//   }
+// }
+static Future<bool> login(String codeEnqueteur, String password) async {
+  try {
+    final response = await http.post(
+      Uri.parse("${baseUrl}enqueteurs/login"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "codeEnqueteur": codeEnqueteur,
+        "password": password
+      }),
     );
 
-    print("Utilisateur connecté stocké localement");
-    return true;
-  } else {
-    throw Exception("Identifiants incorrects");
+    print('STATUS: ${response.statusCode}');
+    print('BODY: ${response.body}');
+
+    if (response.statusCode == 200 || response.statusCode == 201 || response.statusCode == 202) {
+      final data = jsonDecode(response.body);
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString("authToken", jsonEncode(data));
+
+      return true;
+    } else {
+      print("Erreur serveur: ${response.body}");
+      return false;
+    }
+  } catch (e) {
+    print("Erreur réseau: $e");
+    return false;
   }
 }
 /// Récupère l'utilisateur connecté en local
@@ -142,11 +175,19 @@ static Future<Map<String, dynamic>?> getLocalUser() async {
   }
 
   /// Déconnexion
-  static Future<void> logout() async {
+ static Future<void> logout(BuildContext context) async {
+    // 1️⃣ Supprimer le token et info utilisateur
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove("authToken");
-    await prefs.remove("userLogin");
-    print("User logged out");
+    await prefs.clear(); // supprime toutes les clés, plus simple que remove
+
+    // 2️⃣ Supprimer toutes les données SQLite
+    await DatabaseService.clearAllData();
+
+    // 3️⃣ Naviguer vers la page login
+    if (!context.mounted) return;
+    Navigator.pushReplacementNamed(context, "/login");
+
+    print("User fully logged out and local data cleared");
   }
 
   // static Future<bool> isFirstLogin() async {

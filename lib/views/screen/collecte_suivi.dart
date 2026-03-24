@@ -1,16 +1,20 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:sim_tchad/core/constants/app_colors.dart';
 import 'package:sim_tchad/models/EnqueteSuivi.dart';
 import 'package:sim_tchad/models/Enqueteur.dart';
+import 'package:sim_tchad/services/auth_service.dart';
 import 'package:sim_tchad/utils/database_service.dart';
+import 'package:sim_tchad/utils/server_service.dart';
 import 'package:sim_tchad/views/screen/add_suivi.dart';
 import 'package:sim_tchad/views/screen/detail_suivi.dart';
 import 'package:sim_tchad/views/widgets/FicheCollecteCard.dart';
 
 class CollectSuivi extends StatefulWidget {
   Enqueteur? enqueteur;
-   CollectSuivi({super.key, this.enqueteur});
+  CollectSuivi({super.key, this.enqueteur});
 
   @override
   State<CollectSuivi> createState() => _CollectSuiviState();
@@ -22,11 +26,22 @@ class _CollectSuiviState extends State<CollectSuivi> {
   String dateEnquete = DateFormat('dd/MM/yyyy').format(DateTime.now());
   DateTime selectedDate = DateTime.now();
   String numFiche = '';
+  Enqueteur? enq;
+  bool isLoad = false;
 
   @override
   void initState() {
     super.initState();
     _initialize();
+    loadUser();
+  }
+
+  Future<void> loadUser() async {
+    final user = await AuthService.getLocalUser();
+    if (user != null) {
+      setState(() => enq = Enqueteur.fromJson(user));
+    }
+    print("commune ${enq!.commune!.nom}");
   }
 
   Future<void> _initialize() async {
@@ -35,14 +50,17 @@ class _CollectSuiviState extends State<CollectSuivi> {
   }
 
   Future<void> _fetchDataLocal() async {
+    if (!mounted) return;
     setState(() => isLoading = true);
     try {
       final data =
           await DatabaseService.getFicheBySuivi(widget.enqueteur!.commune!.nom);
+      if (!mounted) return;
       setState(() {
         fiches = data.map((e) => EnqueteSuivi.fromJson(e)).toList();
       });
     } finally {
+      if (!mounted) return;
       setState(() => isLoading = false);
     }
   }
@@ -176,7 +194,6 @@ class _CollectSuiviState extends State<CollectSuivi> {
     );
   }
 
-
   Future<void> selectDate({Function(void Function())? setInternalState}) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -216,6 +233,36 @@ class _CollectSuiviState extends State<CollectSuivi> {
     }
   }
 
+  Future<void> handleSync(String numFiche) async {
+    setState(() => isLoad = true);
+    try {
+      await syncDataSuiviByFicheServer(widget.enqueteur!, numFiche);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Synchronisation réussie !"),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Erreur : ${e.toString()}"),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => isLoad = false);
+      await _fetchDataLocal();
+    }
+  }
+
   Future<void> handleSave() async {
     if (numFiche.isEmpty || dateEnquete.isEmpty) return;
 
@@ -236,8 +283,8 @@ class _CollectSuiviState extends State<CollectSuivi> {
       numFiche: numFiche,
       dateEnquete: dateEnquete,
       reference: widget.enqueteur?.commune!.nom,
-      enqueteur: widget!.enqueteur!,
-      commune: widget.enqueteur?.commune,
+      enqueteur: enq,
+      commune: enq?.commune,
     );
 
     await DatabaseService.insert(
@@ -266,7 +313,24 @@ class _CollectSuiviState extends State<CollectSuivi> {
     return "$timestamp$random-${widget.enqueteur?.idEnqueteur}";
   }
 
- @override
+  Future<void> _getResultFromNextScreens(
+      BuildContext context, EnqueteSuivi en) async {
+    final result = await Navigator.push(
+        context,
+        MaterialPageRoute(
+            builder: (_) => DetailSuivi(
+                  enqueteSuivi: en,
+                )));
+    log(result.toString());
+    if (result == true) {
+      print("Rafraichissement en cours");
+
+      if (!mounted) return;
+      await _fetchDataLocal();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.lightGrey,
@@ -298,72 +362,68 @@ class _CollectSuiviState extends State<CollectSuivi> {
 
   Widget _buildHeader() {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.only(top: 50, bottom: 25, left: 20, right: 20),
+      // On réduit drastiquement le padding
+      padding: EdgeInsets.only(
+          top: MediaQuery.of(context).padding.top + 10,
+          bottom: 15,
+          left: 10,
+          right: 15),
       decoration: const BoxDecoration(
         color: AppColors.institutionalGreen,
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(32),
-          bottomRight: Radius.circular(32),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black26,
-            blurRadius: 15,
-            offset: Offset(0, 4),
-          ),
-        ],
+        // On retire les gros arrondis et l'ombre portée pour gagner de l'espace visuel
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              // Bouton retour plus compact
               IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                    color: Colors.white, size: 20),
+                icon: const Icon(Icons.arrow_back_rounded,
+                    color: Colors.white, size: 24),
                 onPressed: () => Navigator.pop(context),
-                padding: EdgeInsets.zero,
               ),
-              // Badge du nombre de fiches
+              const SizedBox(width: 5),
+              // Titre et Sous-titre sur la même colonne mais très serrés
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Suivi des fluxs",
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18, // Taille réduite
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      "Zone : ${widget.enqueteur!.commune!.nom}",
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.8),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Petit badge discret
               Container(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(20),
+                  color: Colors.white.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  "${fiches.length} Fiches",
+                  "${fiches.length} fiches",
                   style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 15),
-          Text(
-             "Suivi des fluxs",
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.5,
-            ),
-          ),
-          const SizedBox(height: 5),
-          Row(
-            children: [
-              const Icon(Icons.location_on_rounded,
-                  color: AppColors.lightGreen, size: 16),
-              const SizedBox(width: 5),
-              Text(
-                "Zone de collecte : ${widget.enqueteur!.commune!.nom}", // Exemple dynamique
-                style: TextStyle(
-                    color: Colors.white.withOpacity(0.8), fontSize: 14),
               ),
             ],
           ),
@@ -383,24 +443,18 @@ class _CollectSuiviState extends State<CollectSuivi> {
         return FicheCollecteCard(
           numFiche: fiche.numFiche ?? "N/A",
           date: fiche.dateEnquete ?? "N/A",
-          onDetail: () {
-            Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (_) => DetailSuivi(
-                          enqueteSuivi: fiche,
-                        )));
-          },
+          onDetail: () => _getResultFromNextScreens(context, fiche),
           onAddProduct: () {
             Navigator.push(
                 context,
                 MaterialPageRoute(
                     builder: (_) => AddSuivi(
                           commune: fiche.commune,
+                          enqueteSuivi: fiche,
                           isEdit: false,
                         )));
           },
-          onSync: () {},
+          onSync: () => handleSync(fiche.numFiche),
           onDelete: () => _showDeleteConfirm(fiche.idEnquete!),
         );
       },

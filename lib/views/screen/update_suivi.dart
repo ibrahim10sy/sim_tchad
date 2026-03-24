@@ -3,28 +3,24 @@ import 'package:sim_tchad/core/constants/app_colors.dart';
 import 'package:sim_tchad/models/CategorieProduit.dart';
 import 'package:sim_tchad/models/Commune.dart';
 import 'package:sim_tchad/models/EnqueteSuivi.dart';
-import 'package:sim_tchad/models/Enqueteur.dart';
 import 'package:sim_tchad/models/NiveauApprovisionnement.dart';
 import 'package:sim_tchad/models/Produit.dart';
 import 'package:sim_tchad/models/SuiviFlux.dart';
-import 'package:sim_tchad/services/auth_service.dart';
 import 'package:sim_tchad/utils/database_service.dart';
 import 'package:sim_tchad/views/widgets/buildSelectField.dart';
 import 'package:sim_tchad/views/widgets/showCustomSelector.dart';
 
-class AddSuivi extends StatefulWidget {
+class UpdateSuivi extends StatefulWidget {
   Commune? commune;
-  bool? isEdit;
   EnqueteSuivi? enqueteSuivi;
   SuiviFlux? suivi;
-  AddSuivi(
-      {super.key, this.commune, this.isEdit, this.enqueteSuivi, this.suivi});
+  UpdateSuivi({super.key, this.commune, this.enqueteSuivi, this.suivi});
 
   @override
-  State<AddSuivi> createState() => _AddSuiviState();
+  State<UpdateSuivi> createState() => _UpdateSuiviState();
 }
 
-class _AddSuiviState extends State<AddSuivi> {
+class _UpdateSuiviState extends State<UpdateSuivi> {
   bool isLoading = false;
   final TextEditingController fluxEntrantTonneCont = TextEditingController();
   final TextEditingController fluxSortantTonneCont = TextEditingController();
@@ -54,7 +50,6 @@ class _AddSuiviState extends State<AddSuivi> {
   NiveauApprovisionnement? selectedNiveau;
   String? disponibilte;
   String? difficulte;
-  Enqueteur? enqueteur;
   // String? selectedDiff;
   // String? selectedDispo;
 
@@ -70,10 +65,8 @@ class _AddSuiviState extends State<AddSuivi> {
   @override
   void initState() {
     super.initState();
-    loadUser();
-    print("enquetesuivi ${widget.enqueteSuivi}");
-    // print("commune ${widget.commune!.toJson()}");
-    if (widget.isEdit == true && widget.suivi != null) {
+
+    if (widget.suivi != null) {
       p = widget.suivi!;
       // print("donnee recu ${widget.prixMagasin!.image! ?? "aucun chemin"}");
       fluxEntrantTonneCont.text = p!.fluxEntrantTonne.toString() ?? "";
@@ -88,14 +81,6 @@ class _AddSuiviState extends State<AddSuivi> {
     }
 
     _fetchDataLocal();
-  }
-
-  Future<void> loadUser() async {
-    final user = await AuthService.getLocalUser();
-    if (user != null) {
-      setState(() => enqueteur = Enqueteur.fromJson(user));
-    }
-    print("commune ${enqueteur!.commune!.nom}");
   }
 
   Future<void> _fetchDataLocal() async {
@@ -128,14 +113,7 @@ class _AddSuiviState extends State<AddSuivi> {
   }
 
   Future<void> handleSubmit() async {
-    if (selectedProduit == null ||
-        enqueteur!.commune == null ||
-        fluxEntrantTonneCont == null ||
-        fluxSortantTonneCont == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text("Veuillez renseigné tout les champs obligatoire")),
-      );
+    if (selectedProduit == null || selectedNiveau == null) {
       return;
     }
 
@@ -144,35 +122,28 @@ class _AddSuiviState extends State<AddSuivi> {
     try {
       final data = SuiviFlux(
         produit: selectedProduit!,
-        fluxEntrantTonne: double.tryParse(fluxEntrantTonneCont.text)!,
-        fluxSortantTonne: double.tryParse(fluxSortantTonneCont.text)!,
+        fluxEntrantTonne: double.tryParse(fluxEntrantTonneCont.text) ?? 0,
+        fluxSortantTonne: double.tryParse(fluxSortantTonneCont.text) ?? 0,
         observation: safeText(observationController) ?? "",
-        commune: enqueteur!.commune ?? null,
-        niveau: selectedNiveau ?? null,
+        commune: widget.commune,
+        niveau: selectedNiveau,
         difficulte: difficulte ?? "",
         disponibilite: disponibilte ?? "",
-        enqueteSuivi: widget.enqueteSuivi ?? null,
-        enqueteur: enqueteur,
+        enqueteSuivi: widget.enqueteSuivi,
         dateAjout: DateTime.now().toString(),
         dateCollecte: DateTime.now().toString(),
       );
-      print(data.toJson());
-      if (widget.isEdit == true) {
-        await DatabaseService.update(
-          "SuiviFlux",
-          data.toJson(),
-          "idSuivi",
-          p!.idSuivi,
-        );
-      } else {
-        await DatabaseService.insert("SuiviFlux", data.toJson());
-      }
+
+      await DatabaseService.update(
+        "SuiviFluxs",
+        data.toJson(),
+        "idSuivi",
+        p!.idSuivi,
+      );
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(widget.isEdit!
-              ? "Suivi modifié avec succès"
-              : "Suivi enregistré avec succès"),
+          content: Text("Suivi modifié avec succès"),
         ),
       );
 
@@ -180,8 +151,7 @@ class _AddSuiviState extends State<AddSuivi> {
     } catch (e) {
       debugPrint("Erreur: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text("Veuillez renseigné tout les champs obligatoire")),
+        const SnackBar(content: Text("Une erreur est survenue")),
       );
     } finally {
       setState(() => isLoading = false);
@@ -193,13 +163,8 @@ class _AddSuiviState extends State<AddSuivi> {
     return Scaffold(
       backgroundColor: AppColors.lightGrey,
       appBar: AppBar(
-        title: widget.isEdit == true
-            ? Text("Modification",
-                style:
-                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 16))
-            : Text("Suivi des fluxs",
-                style:
-                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        title: Text("Modification",
+            style: const TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: AppColors.institutionalGreen,
         foregroundColor: Colors.white,
         elevation: 0,
@@ -276,7 +241,7 @@ class _AddSuiviState extends State<AddSuivi> {
             padding: const EdgeInsets.symmetric(vertical: 14),
           ),
           child: Text(
-            widget.isEdit! ? "Modifier" : "Enregistrer",
+            "Modifier",
             style: const TextStyle(fontSize: 16, color: Colors.white),
           ),
         ),
@@ -365,9 +330,9 @@ class _AddSuiviState extends State<AddSuivi> {
       /// Flux
       _buildTextField(
         controller: fluxEntrantTonneCont,
-        isRequired: true,
         label: "Flux entrant (tonne)",
         icon: Icons.call_received,
+        isRequired: true,
         isNumber: true,
         suffix: "T",
       ),
@@ -375,8 +340,8 @@ class _AddSuiviState extends State<AddSuivi> {
       _buildTextField(
         controller: fluxSortantTonneCont,
         label: "Flux sortant (tonne)",
-        isRequired: true,
         icon: Icons.call_made,
+        isRequired: true,
         isNumber: true,
         suffix: "T",
       ),
