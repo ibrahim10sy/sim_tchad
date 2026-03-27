@@ -36,6 +36,7 @@ class _HomePageState extends State<HomePage>
   Future<void> handleFetchData(
     String codeEnqueteur,
     String codeActeur,
+    int idCommune,
     Function(int progress)? onProgress,
   ) async {
     print("Synchronisation en cours...");
@@ -126,6 +127,12 @@ class _HomePageState extends State<HomePage>
         'nomBassin',
         'description'
       ],
+      "Equivalence": [
+        'id',
+        'unite',
+        'produit',
+        'commune'
+      ],
       "Variete": [
         'idVariete',
         'codeVariete',
@@ -207,7 +214,8 @@ class _HomePageState extends State<HomePage>
         "PrixMagasins",
         "PrixMagasin"
       ],
-      ["suivis/enqueteur/$codeEnqueteur/pending", "SuiviFluxs", "SuiviFlux"]
+      ["suivis/enqueteur/$codeEnqueteur/pending", "SuiviFluxs", "SuiviFlux"],
+      ["equivalences/commune/$idCommune", "Equivalence", "Equivalence"]
     ];
 
     for (var r in resources) {
@@ -243,6 +251,7 @@ class _HomePageState extends State<HomePage>
       await handleFetchData(
         enqueteur!.codeEnqueteur!,
         enqueteur!.acteur!.codeActeur,
+        enqueteur!.commune!.idCommune,
         (progress) {
           setState(() {
             syncProgress = progress;
@@ -321,12 +330,12 @@ class _HomePageState extends State<HomePage>
     return Row(
       children: [
         IconButton(
-          icon: const Icon(Icons.sync, color: Colors.white, size: 22),
+          icon: const Icon(Icons.sync, color: Colors.white, size: 18),
           onPressed:
               _fetchData, // Correction ici : On passe la référence de la fonction
         ),
         IconButton(
-          icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 22),
+          icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 18),
           onPressed: () => _showLogoutDialog(),
         ),
       ],
@@ -349,7 +358,7 @@ class _HomePageState extends State<HomePage>
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 10, 10, 15),
+              padding: const EdgeInsets.fromLTRB(10, 10, 10, 0),
               child: Row(
                 children: [
                   // Avatar ou Initiale pour un look plus pro
@@ -360,20 +369,22 @@ class _HomePageState extends State<HomePage>
                       children: [
                         Text(
                           "Bonjour, ${enqueteur?.nomEnqueteur ?? userName} 👋",
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 17,
+                            fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        Text(
-                          "e-AgriSouk • Collecte de données",
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.7),
-                            fontSize: 12,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
+                        // Text(
+                        //   "e-AgriSouk • Collecte de données",
+                        //   style: TextStyle(
+                        //     color: Colors.white.withOpacity(0.7),
+                        //     fontSize: 12,
+                        //     letterSpacing: 0.5,
+                        //   ),
+                        // ),
                       ],
                     ),
                   ),
@@ -398,8 +409,6 @@ class _HomePageState extends State<HomePage>
       indicatorColor: Colors.white,
       indicatorWeight: 3, // Un peu plus fin pour plus d'élégance
 
-      // Ajustez le 'left' pour qu'il soit identique au padding du texte "Bonjour"
-      // Si votre titre a un padding de 20, mettez 20 ici.
       labelPadding: const EdgeInsets.only(left: 20, right: 10),
 
       indicatorSize: TabBarIndicatorSize.label,

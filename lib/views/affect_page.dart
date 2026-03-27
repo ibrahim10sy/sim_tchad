@@ -79,14 +79,15 @@ class _AffectPageState extends State<AffectPage> {
       });
     } finally {
       if (mounted) {
-      setState(() => isLoading = false);
-    }
+        setState(() => isLoading = false);
+      }
     }
   }
 
   Future<void> handleFetchData(
     String codeEnqueteur,
     String codeActeur,
+    int idCommune,
     Function(int progress)? onProgress,
   ) async {
     print("Synchronisation en cours...");
@@ -134,6 +135,12 @@ class _AffectPageState extends State<AffectPage> {
         'whatsApp',
         'typeActeur'
       ],
+        "Equivalence": [
+        'id',
+        'unite',
+        'produit',
+        'commune'
+      ],
       "Commune": ['idCommune', 'codeCommune', 'nom', 'description'],
       "NiveauApprovisionnement": [
         'idNiveauApprovisionnement',
@@ -176,6 +183,7 @@ class _AffectPageState extends State<AffectPage> {
       ["marches/enqueteur/$codeEnqueteur", "Marche", "Marchés"],
       ["magasins/acteur/$codeActeur", "Magasin", "Magasins"],
       ["categories", "CategorieProduit", "Categories"],
+      ["equivalences/commune/$idCommune", "Equivalence", "Equivalence"]
     ];
 
     for (var r in resources) {
@@ -208,7 +216,8 @@ class _AffectPageState extends State<AffectPage> {
     try {
       await handleFetchData(
         enqueteur!.codeEnqueteur!,
-        enqueteur!.acteur!.codeActeur!,
+        enqueteur!.acteur!.codeActeur,
+        enqueteur!.commune!.idCommune,
         (progress) => setState(() => syncProgress = progress),
       );
       await _fetchDataLocal();
@@ -241,153 +250,175 @@ class _AffectPageState extends State<AffectPage> {
     }
   }
 
- void _showResetPasswordModal(BuildContext context, String codeEnqueteur) {
-  final TextEditingController newPasswordController = TextEditingController();
-  final TextEditingController confirmPasswordController = TextEditingController();
-  bool isResetting = false;
-  bool obscureNew = true;
-  bool obscureConfirm = true;
+  void _showResetPasswordModal(BuildContext context, String codeEnqueteur) {
+    final TextEditingController newPasswordController = TextEditingController();
+    final TextEditingController confirmPasswordController =
+        TextEditingController();
+    bool isResetting = false;
+    bool obscureNew = true;
+    bool obscureConfirm = true;
 
-  showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (context) {
-      return StatefulBuilder(
-        builder: (context, setModalState) {
-          return AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            contentPadding: const EdgeInsets.all(20),
-            title: Column(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(15),
-                  decoration: BoxDecoration(
-                    color: AppColors.institutionalGreen.withOpacity(0.1),
-                    shape: BoxShape.circle,
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20)),
+              contentPadding: const EdgeInsets.all(20),
+              title: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(15),
+                    decoration: BoxDecoration(
+                      color: AppColors.institutionalGreen.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.lock_reset_rounded,
+                        color: AppColors.institutionalGreen, size: 40),
                   ),
-                  child: const Icon(Icons.lock_reset_rounded, 
-                    color: AppColors.institutionalGreen, size: 40),
-                ),
-                const SizedBox(height: 15),
-                const Text(
-                  "Sécurité du compte",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
-                ),
-              ],
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  "C'est votre première connexion. Par mesure de sécurité, veuillez définir un nouveau mot de passe.",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey, fontSize: 13),
-                ),
-                const SizedBox(height: 25),
-                // Nouveau Mot de Passe
-                TextField(
-                  controller: newPasswordController,
-                  obscureText: obscureNew,
-                  decoration: InputDecoration(
-                    labelText: "Nouveau mot de passe",
-                    prefixIcon: const Icon(Icons.vpn_key_outlined),
-                    suffixIcon: IconButton(
-                      icon: Icon(obscureNew ? Icons.visibility_off : Icons.visibility),
-                      onPressed: () => setModalState(() => obscureNew = !obscureNew),
-                    ),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.grey[300]!),
-                    ),
+                  const SizedBox(height: 15),
+                  const Text(
+                    "Sécurité du compte",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
                   ),
-                ),
-                const SizedBox(height: 15),
-                // Confirmation
-                TextField(
-                  controller: confirmPasswordController,
-                  obscureText: obscureConfirm,
-                  decoration: InputDecoration(
-                    labelText: "Confirmer le mot de passe",
-                    prefixIcon: const Icon(Icons.check_circle_outline),
-                    suffixIcon: IconButton(
-                      icon: Icon(obscureConfirm ? Icons.visibility_off : Icons.visibility),
-                      onPressed: () => setModalState(() => obscureConfirm = !obscureConfirm),
-                    ),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.grey[300]!),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            actions: [
-              Padding(
-                padding: const EdgeInsets.only(bottom: 10, left: 5, right: 5),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.institutionalGreen,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    onPressed: isResetting ? null : () async {
-                      if (newPasswordController.text.length < 4) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Le mot de passe est trop court")));
-                        return;
-                      }
-
-                      if (newPasswordController.text != confirmPasswordController.text) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Les mots de passe ne correspondent pas")));
-                        return;
-                      }
-
-                      setModalState(() => isResetting = true);
-
-                      bool success = await AuthService.resetPassword(
-                          codeEnqueteur, newPasswordController.text);
-
-                      if (success) {
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text("Mot de passe mis à jour avec succès !"),
-                            backgroundColor: Colors.green,
-                            behavior: SnackBarBehavior.floating,
-                          )
-                        );
-                      } else {
-                        setModalState(() => isResetting = false);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Erreur serveur, réessayez plus tard")));
-                      }
-                    },
-                    child: isResetting 
-                      ? const SizedBox(
-                          height: 20, 
-                          width: 20, 
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
-                        )
-                      : const Text("METTRE À JOUR", 
-                          style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1)),
-                  ),
-                ),
+                ],
               ),
-            ],
-          );
-        },
-      );
-    },
-  );
-}
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    "C'est votre première connexion. Par mesure de sécurité, veuillez définir un nouveau mot de passe.",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.grey, fontSize: 13),
+                  ),
+                  const SizedBox(height: 25),
+                  // Nouveau Mot de Passe
+                  TextField(
+                    controller: newPasswordController,
+                    obscureText: obscureNew,
+                    decoration: InputDecoration(
+                      labelText: "Nouveau mot de passe",
+                      prefixIcon: const Icon(Icons.vpn_key_outlined),
+                      suffixIcon: IconButton(
+                        icon: Icon(obscureNew
+                            ? Icons.visibility_off
+                            : Icons.visibility),
+                        onPressed: () =>
+                            setModalState(() => obscureNew = !obscureNew),
+                      ),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey[300]!),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 15),
+                  // Confirmation
+                  TextField(
+                    controller: confirmPasswordController,
+                    obscureText: obscureConfirm,
+                    decoration: InputDecoration(
+                      labelText: "Confirmer le mot de passe",
+                      prefixIcon: const Icon(Icons.check_circle_outline),
+                      suffixIcon: IconButton(
+                        icon: Icon(obscureConfirm
+                            ? Icons.visibility_off
+                            : Icons.visibility),
+                        onPressed: () => setModalState(
+                            () => obscureConfirm = !obscureConfirm),
+                      ),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey[300]!),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10, left: 5, right: 5),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.institutionalGreen,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: isResetting
+                          ? null
+                          : () async {
+                              if (newPasswordController.text.length < 4) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                        content: Text(
+                                            "Le mot de passe est trop court")));
+                                return;
+                              }
+
+                              if (newPasswordController.text !=
+                                  confirmPasswordController.text) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                        content: Text(
+                                            "Les mots de passe ne correspondent pas")));
+                                return;
+                              }
+
+                              setModalState(() => isResetting = true);
+
+                              bool success = await AuthService.resetPassword(
+                                  codeEnqueteur, newPasswordController.text);
+
+                              if (success) {
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context)
+                                    .showSnackBar(const SnackBar(
+                                  content: Text(
+                                      "Mot de passe mis à jour avec succès !"),
+                                  backgroundColor: Colors.green,
+                                  behavior: SnackBarBehavior.floating,
+                                ));
+                              } else {
+                                setModalState(() => isResetting = false);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                        content: Text(
+                                            "Erreur serveur, réessayez plus tard")));
+                              }
+                            },
+                      child: isResetting
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                  color: Colors.white, strokeWidth: 2))
+                          : const Text("METTRE À JOUR",
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1)),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -506,8 +537,7 @@ class _AffectPageState extends State<AffectPage> {
           onTap: () => Navigator.push(
               context,
               MaterialPageRoute(
-                  builder: (_) =>
-                      CollectSuivi(enqueteur : enqueteur))),
+                  builder: (_) => CollectSuivi(enqueteur: enqueteur))),
         ),
         const SizedBox(height: 16),
         if (magasins.isNotEmpty) _buildSectionTitle("Magasins affectés"),
@@ -560,7 +590,7 @@ class _AffectPageState extends State<AffectPage> {
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.cloud_sync_rounded,
-                  size: 80, color: AppColors.institutionalGreen),
+                  size: 60, color: AppColors.institutionalGreen),
             ),
             const SizedBox(height: 24),
             const Text(
@@ -571,19 +601,22 @@ class _AffectPageState extends State<AffectPage> {
             const Text(
               "C'est votre première connexion. Synchronisez vos données pour accéder à vos affectations et commencer la collecte.",
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey, fontSize: 14, height: 1.5),
+              style: TextStyle(color: Colors.grey, fontSize: 13, height: 1),
             ),
             const SizedBox(height: 32),
             // Bouton d'action principal plus visible
             SizedBox(
-              width: double.infinity,
               height: 50,
               child: ElevatedButton.icon(
                 icon: const Icon(
                   Icons.sync_rounded,
                   color: Colors.white,
                 ),
-                label: const Text("DÉMARRER LA SYNCHRONISATION"),
+                label: Text(
+                  "DÉMARRER LA SYNCHRONISATION",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 13),
+                ),
                 onPressed: _fetchData,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.institutionalGreen,

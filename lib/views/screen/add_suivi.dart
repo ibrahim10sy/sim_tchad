@@ -470,7 +470,7 @@ class _AddSuiviState extends State<AddSuivi> {
     );
   }
 
-  Widget _buildTextField({
+   Widget _buildTextField({
     required TextEditingController controller,
     required String label,
     required IconData icon,
@@ -488,7 +488,8 @@ class _AddSuiviState extends State<AddSuivi> {
         label: RichText(
           text: TextSpan(
             text: label,
-            style: const TextStyle(color: AppColors.darkGrey),
+            style: const TextStyle(
+                color: Colors.black, fontWeight: FontWeight.bold, fontSize: 12),
             children: [
               if (isRequired)
                 const TextSpan(

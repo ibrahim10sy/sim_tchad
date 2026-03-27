@@ -257,7 +257,7 @@ class _UpdatePrixMarcheState extends State<UpdatePrixMarche> {
       backgroundColor: AppColors.lightGrey,
       appBar: AppBar(
         title: Text("Modification",
-            style: const TextStyle(fontWeight: FontWeight.bold)),
+            style: const TextStyle(fontWeight: FontWeight.bold ,fontSize: 16)),
         backgroundColor: AppColors.institutionalGreen,
         foregroundColor: Colors.white,
         elevation: 0,
@@ -767,7 +767,7 @@ class _UpdatePrixMarcheState extends State<UpdatePrixMarche> {
     );
   }
 
-  Widget _buildTextField({
+   Widget _buildTextField({
     required TextEditingController controller,
     required String label,
     required IconData icon,
@@ -785,7 +785,8 @@ class _UpdatePrixMarcheState extends State<UpdatePrixMarche> {
         label: RichText(
           text: TextSpan(
             text: label,
-            style: const TextStyle(color: AppColors.darkGrey),
+            style: const TextStyle(
+                color: Colors.black, fontWeight: FontWeight.bold, fontSize: 12),
             children: [
               if (isRequired)
                 const TextSpan(

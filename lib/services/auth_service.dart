@@ -79,106 +79,83 @@ static Future<bool> resetPassword(String codeEnqueteur, String newPassword) asyn
   }
 }
 
-  /// Login en ligne et stockage du token uniquement
-//   static Future<bool> login(String codeEnqueteur, String password) async {
-//   final response = await http.post(
-//     Uri.parse("${baseUrl}enqueteurs/login"),
-//     headers: {"Content-Type": "application/json"},
-//     body: jsonEncode({"codeEnqueteur": codeEnqueteur, "password": password}),
-//   );
+ static Future<bool> login(String codeEnqueteur, String password) async {
+    try {
+      final response = await http.post(
+        Uri.parse("${baseUrl}enqueteurs/login"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "codeEnqueteur": codeEnqueteur,
+          "password": password
+        }),
+      );
 
-//   print('login response: ${response.statusCode} - ${response.body}');
+      print('STATUS: ${response.statusCode}');
+      print('BODY: ${response.body}');
 
-//   if (response.statusCode == 200) {
-//     final data = jsonDecode(response.body);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = jsonDecode(response.body);
 
-//     final prefs = await SharedPreferences.getInstance();
+        final prefs = await SharedPreferences.getInstance();
 
-//     // 🔹 Stocker le token si disponible (ici pas de token, donc stocker idEnqueteur)
-//     await prefs.setString("authToken", jsonEncode(data)); // On garde toutes les infos utilisateur
+        // 🔹 Token
+        await prefs.setString("authToken", jsonEncode(data));
 
-//     // 🔹 Stockage pour login offline (optionnel)
-//     await prefs.setString(
-//       "userLogin",
-//       jsonEncode({"codeEnqueteur": codeEnqueteur, "password": password}),
-//     );
+        // 🔥 IMPORTANT : sauvegarde login local
+        await prefs.setString("userLogin", jsonEncode({
+          "codeEnqueteur": codeEnqueteur,
+          "password": password
+        }));
 
-//     print("Utilisateur connecté stocké localement");
-//     return true;
-//   } else {
-//     throw Exception("Identifiants incorrects");
-//   }
-// }
-static Future<bool> login(String codeEnqueteur, String password) async {
-  try {
-    final response = await http.post(
-      Uri.parse("${baseUrl}enqueteurs/login"),
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({
-        "codeEnqueteur": codeEnqueteur,
-        "password": password
-      }),
-    );
+        return true;
+      }
 
-    print('STATUS: ${response.statusCode}');
-    print('BODY: ${response.body}');
-
-    if (response.statusCode == 200 || response.statusCode == 201 || response.statusCode == 202) {
-      final data = jsonDecode(response.body);
-
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString("authToken", jsonEncode(data));
-
-      return true;
-    } else {
-      print("Erreur serveur: ${response.body}");
+      return false;
+    } catch (e) {
+      print("Erreur réseau: $e");
       return false;
     }
-  } catch (e) {
-    print("Erreur réseau: $e");
-    return false;
   }
-}
-/// Récupère l'utilisateur connecté en local
-static Future<Map<String, dynamic>?> getLocalUser() async {
-  final prefs = await SharedPreferences.getInstance();
-  final userJson = prefs.getString("authToken"); // 🔹 stocké lors du login
 
-  if (userJson != null) {
-    return jsonDecode(userJson);
-  }
-  return null;
-}
-  /// Vérifier login local
-  static Future<bool> checkLocalLogin(String codeEnqueteur, String password) async {
+  /// 🔹 LOGIN OFFLINE
+  static Future<bool> checkLocalLogin(String code, String password) async {
     final prefs = await SharedPreferences.getInstance();
     final storedLogin = prefs.getString("userLogin");
 
     if (storedLogin != null) {
       final data = jsonDecode(storedLogin);
 
-      if (data["codeEnqueteur"] == codeEnqueteur &&
-          data["password"] == password) {
-        print("Local login valid");
-        return true;
-      }
+      return data["codeEnqueteur"] == code &&
+             data["password"] == password;
     }
 
-    print("Local login invalid");
     return false;
   }
 
-  /// Vérifier si c'est la première connexion
-  static Future<bool> isFirstLogin() async {
+  /// 🔹 récupérer user connecté
+  static Future<Map<String, dynamic>?> getLocalUser() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString("authToken") == null;
+    final userJson = prefs.getString("authToken");
+
+    if (userJson != null) {
+      return jsonDecode(userJson);
+    }
+    return null;
   }
 
-  /// Déconnexion
- static Future<void> logout(BuildContext context) async {
-    // 1️⃣ Supprimer le token et info utilisateur
+  /// 🔹 Vérifier première connexion
+  static Future<bool> isFirstLogin() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.clear(); // supprime toutes les clés, plus simple que remove
+    return !prefs.containsKey("userLogin");
+  }
+
+  
+
+  /// Déconnexion
+  static Future<void> logout(BuildContext context) async {
+    // 1️⃣ Supprimer le token et info utilisateur
+  final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
 
     // 2️⃣ Supprimer toutes les données SQLite
     await DatabaseService.clearAllData();

@@ -28,4 +28,15 @@ class Unite {
       dateModif: json['dateModif'],
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'idUnite': idUnite,
+      'libelle': libelle,
+      'sigle': sigle,
+      'description': description,
+      'dateAjout': dateAjout,
+      'dateModif': dateModif
+    };
+  }
 }

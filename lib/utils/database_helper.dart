@@ -423,6 +423,15 @@ Future<Database> openDatabaseConnection() async {
   ''');
 
   await db.execute('''
+  CREATE TABLE IF NOT EXISTS  Equivalence (
+          id INTEGER PRIMARY KEY,
+          unite TEXT,
+          produit TEXT,
+          commune TEXT
+            )
+  ''');
+
+  await db.execute('''
   CREATE TABLE IF NOT EXISTS  Produit (
           idProduit INTEGER PRIMARY KEY,
           codeProduit TEXT,

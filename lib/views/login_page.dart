@@ -28,11 +28,33 @@ class _LoginPageState extends State<LoginPage> {
   @override
   void initState() {
     super.initState();
-    checkFirstLogin();
-    loadSavedUser();
+    init();
+    // loadSavedUser();
   }
 
-  /// Charger le code enregistré localement
+  
+
+  /// Vérifie si c'est la première connexion
+  // Future<void> checkFirstLogin() async {
+  //   bool result = await AuthService.isFirstLogin();
+
+  //   setState(() {
+  //     isFirstLogin = result;
+  //   });
+  // }
+
+ Future<void> init() async {
+    await checkFirstLogin();
+    await loadSavedUser();
+  }
+
+  /// 🔹 Vérifie première connexion
+  Future<void> checkFirstLogin() async {
+    isFirstLogin = await AuthService.isFirstLogin();
+    setState(() {});
+  }
+
+  /// 🔹 Charger code enregistré
   Future<void> loadSavedUser() async {
     final prefs = await SharedPreferences.getInstance();
     final storedLogin = prefs.getString("userLogin");
@@ -46,61 +68,52 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  /// Vérifie si c'est la première connexion
-  Future<void> checkFirstLogin() async {
-    bool result = await AuthService.isFirstLogin();
-
-    setState(() {
-      isFirstLogin = result;
-    });
-  }
-
-  /// Fonction login
+  /// 🔥 LOGIN PRINCIPAL
   Future<void> login() async {
-    print("login>>>> start");
     setState(() {
       loading = true;
       errorMessage = "";
     });
 
+    String code = codeController.text.trim();
+    String password = passwordController.text.trim();
+
+    if (code.isEmpty || password.isEmpty) {
+      setState(() {
+        errorMessage = "Veuillez remplir tous les champs";
+        loading = false;
+      });
+      return;
+    }
+
     try {
-      String code = codeController.text.trim();
-      String password = passwordController.text.trim();
-
-      if (code.isEmpty || password.isEmpty) {
-        setState(() {
-          errorMessage = "Veuillez remplir tous les champs";
-        });
-        return;
-      }
-
-      // Login offline
+      /// 🔹 1. Offline
       bool localLogin = await AuthService.checkLocalLogin(code, password);
-      print("Local login result: $localLogin");
 
       if (localLogin) {
+        print("Offline login OK");
         if (!mounted) return;
-        print("Offline login success");
         Navigator.pushReplacementNamed(context, "/home");
         return;
       }
 
-      // Login online
+      /// 🔹 2. Online
       bool onlineLogin = await AuthService.login(code, password);
-      print("Online login result: $onlineLogin");
 
       if (onlineLogin) {
+        print("Online login OK");
         if (!mounted) return;
-        print("Online login success");
         Navigator.pushReplacementNamed(context, "/home");
+      } else {
+        setState(() {
+          errorMessage = "Identifiants incorrects";
+        });
       }
-    } catch (e, st) {
-      print("Login error: $e\n$st");
+    } catch (e) {
       setState(() {
-        errorMessage = "Échec de connexion. Vérifiez vos identifiants.";
+        errorMessage = "Erreur de connexion";
       });
     } finally {
-      errorMessage = "Échec de connexion. Vérifiez vos identifiants.";
       setState(() {
         loading = false;
       });

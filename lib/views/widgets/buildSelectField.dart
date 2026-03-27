@@ -45,7 +45,9 @@ class SelectField extends StatelessWidget {
                     text: TextSpan(
                       text: label,
                       style: const TextStyle(
-                          color: AppColors.darkGrey, fontSize: 10),
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12),
                       children: [
                         if (isRequired)
                           const TextSpan(

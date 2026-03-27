@@ -7,6 +7,7 @@ import 'package:sim_tchad/models/Acteur.dart';
 import 'package:sim_tchad/models/CategorieProduit.dart';
 import 'package:sim_tchad/models/EnqueteCollecte.dart';
 import 'package:sim_tchad/models/Enqueteur.dart';
+import 'package:sim_tchad/models/Equivalence.dart';
 import 'package:sim_tchad/models/Marche.dart';
 import 'package:sim_tchad/models/NiveauApprovisionnement.dart';
 import 'package:sim_tchad/models/PrixMarche.dart';
@@ -73,6 +74,7 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
   List<CategorieProduit> categorieProduit = [];
   List<Unite> unites = [];
   List<Variete> variete = [];
+  List<Equivalence> equivalences = [];
   PrixMarche? p;
   CategorieProduit? selectedCategorie;
   File? _imageFile; // Pour la nouvelle photo capturée
@@ -192,7 +194,7 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
   }
 
   Future<void> _fetchDataLocal() async {
-    if (!mounted) return; 
+    if (!mounted) return;
     setState(() => isLoading = true);
 
     try {
@@ -204,8 +206,9 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
       final varieteData = await DatabaseService.getAll("Variete");
       final catData = await DatabaseService.getAll("CategorieProduit");
       final acteurs = await DatabaseService.getAll("Acteur");
+      final equiv = await DatabaseService.getAll("Equivalence");
 
-      if (!mounted) return; 
+      if (!mounted) return;
       setState(() {
         niveaux = niveauxData
             .map((m) => NiveauApprovisionnement.fromJson(m))
@@ -216,6 +219,8 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
         variete = varieteData.map((m) => Variete.fromJson(m)).toList();
         categorieProduit =
             catData.map((m) => CategorieProduit.fromJson(m)).toList();
+        equivalences =
+            catData.map((m) => Equivalence.fromJson(m)).toList();
       });
 
       // 🔥 IMPORTANT : RECONSTRUCTION DES SELECTED
@@ -267,9 +272,10 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
       appBar: AppBar(
         title: widget.isEdit == true
             ? Text("Modification",
-                style: const TextStyle(fontWeight: FontWeight.bold))
+                style: const TextStyle(fontWeight: FontWeight.bold,fontSize: 16))
             : Text(widget.marche!.nomMarche,
-                style: const TextStyle(fontWeight: FontWeight.bold)),
+                style:
+                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
         backgroundColor: AppColors.institutionalGreen,
         foregroundColor: Colors.white,
         elevation: 0,
@@ -382,7 +388,6 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
       ),
       SelectField(
         label: "Variété",
-        isRequired: true,
         icon: Icons.category_outlined,
         value: selectedVariete?.libelle ?? "Sélectionner",
         onTap: () {
@@ -399,126 +404,107 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
           );
         },
       ),
-      Row(
-        children: [
-          Expanded(
-            child: SelectField(
-              label: "Qualité",
-              icon: Icons.star_outline,
-              value: selectedQualite ?? "Sélectionner",
-              onTap: () {
-                if (qualites.isEmpty) return;
-                SelectorBottomSheet.show<String>(
-                  context: context,
-                  title: "Qualité",
-                  items: qualites,
-                  itemLabel: (q) => q,
-                  selectedItem: selectedQualite,
-                  onSelected: (q) {
-                    setState(() => selectedQualite = q);
-                  },
-                );
-              },
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _buildTextField(
-                controller: ageController,
-                label: "Âge (jours)",
-                icon: Icons.history,
-                isNumber: true),
-          ),
-        ],
+      SelectField(
+        label: "Etat du produit",
+        icon: Icons.star_outline,
+        value: selectedQualite ?? "Sélectionner",
+        onTap: () {
+          if (qualites.isEmpty) return;
+          SelectorBottomSheet.show<String>(
+            context: context,
+            title: "Qualité",
+            items: qualites,
+            itemLabel: (q) => q,
+            selectedItem: selectedQualite,
+            onSelected: (q) {
+              setState(() => selectedQualite = q);
+            },
+          );
+        },
       ),
+      _buildTextField(
+          controller: ageController,
+          label: "Âge (jours)",
+          icon: Icons.history,
+          isNumber: true),
     ]);
   }
 
   // --- SECTION PRIX ---
   Widget _buildPriceSection() {
     return _buildCardWrapper([
-      _buildTextField(
-        controller: _prix1Controller,
+      SelectField(
+        label: "Unité de mesure",
         isRequired: true,
-        label: "Prix en kg",
+        icon: Icons.straighten,
+        value: selectedUnite1?.libelle ?? "Sélectionner",
+        onTap: () => SelectorBottomSheet.show<Unite>(
+          context: context,
+          title: "Unités",
+          items: unites,
+          itemLabel: (u) => u.libelle ?? "",
+          selectedItem: selectedUnite1,
+          onSelected: (u) {
+            setState(() {
+              selectedUnite1 = u;
+              selectedUniteMesure = u.libelle;
+            });
+          },
+        ),
+      ),
+
+      _buildTextField(
+        controller: _prix2Controller,
+        isRequired: true,
+        label: "Prix unite",
         icon: Icons.payments_outlined,
         isNumber: true,
         suffix: "FCFA",
       ),
-      Row(
-        children: [
-          Expanded(
-            child: SelectField(
-              label: "Unité de mesure 1",
-              isRequired: true,
-              icon: Icons.straighten,
-              value: selectedUnite1?.libelle ?? "Sélectionner",
-              onTap: () => SelectorBottomSheet.show<Unite>(
-                context: context,
-                title: "Unités",
-                items: unites,
-                itemLabel: (u) => u.libelle ?? "",
-                selectedItem: selectedUnite1,
-                onSelected: (u) {
-                  setState(() {
-                    selectedUnite1 = u;
-                    selectedUniteMesure = u.libelle;
-                  });
-                },
-              ),
-            ),
-          ),
-          SizedBox(
-            width: 10,
-          ),
-          Expanded(
-            child: _buildTextField(
-              controller: _prix2Controller,
-              isRequired: true,
-              label: "Prix unite 1",
-              icon: Icons.agriculture,
-              isNumber: true,
-              suffix: "FCFA",
-            ),
-          ),
-        ],
+      _buildTextField(
+        controller: _prix1Controller,
+        isRequired: true,
+        label: "Equivalence en kg",
+        icon: Icons.payments_outlined,
+        isNumber: true,
+        suffix: "FCFA",
       ),
-      Row(
-        children: [
-          Expanded(
-            child: SelectField(
-              label: "Unité de mesure 2",
-              icon: Icons.straighten,
-              value: selectedUnite2?.libelle ?? "Sélectionner",
-              onTap: () => SelectorBottomSheet.show<Unite>(
-                context: context,
-                title: "Unités",
-                items: unites,
-                itemLabel: (u) => u.libelle ?? "",
-                selectedItem: selectedUnite2,
-                onSelected: (u) {
-                  setState(() {
-                    selectedUnite2 = u;
-                    selectedUniteMesure2 = u.libelle;
-                  });
-                },
-              ),
-            ),
-          ),
-          SizedBox(
-            width: 10,
-          ),
-          Expanded(
-            child: _buildTextField(
-              controller: _prix3Controller,
-              label: "Prix unite 2",
-              icon: Icons.agriculture,
-              isNumber: true,
-              suffix: "FCFA",
-            ),
-          ),
-        ],
-      ),
+      // Row(
+      //   children: [
+      //     Expanded(
+      //       child: SelectField(
+      //         label: "Unité de mesure 2",
+      //         icon: Icons.straighten,
+      //         value: selectedUnite2?.libelle ?? "Sélectionner",
+      //         onTap: () => SelectorBottomSheet.show<Unite>(
+      //           context: context,
+      //           title: "Unités",
+      //           items: unites,
+      //           itemLabel: (u) => u.libelle ?? "",
+      //           selectedItem: selectedUnite2,
+      //           onSelected: (u) {
+      //             setState(() {
+      //               selectedUnite2 = u;
+      //               selectedUniteMesure2 = u.libelle;
+      //             });
+      //           },
+      //         ),
+      //       ),
+      //     ),
+      //     SizedBox(
+      //       width: 10,
+      //     ),
+      //     Expanded(
+      //       child: _buildTextField(
+      //         controller: _prix3Controller,
+      //         label: "Prix unite 2",
+      //         icon: Icons.agriculture,
+      //         isNumber: true,
+      //         suffix: "FCFA",
+      //       ),
+      //     ),
+      //   ],
+      // ),
     ]);
   }
 
@@ -541,7 +527,6 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
       ),
       SelectField(
         label: "Moyen de transport",
-        isRequired: true,
         icon: Icons.local_shipping_outlined,
         value: selectedMoyenTransport ?? "Sélectionner",
         onTap: () {
@@ -560,7 +545,6 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
       ),
       SelectField(
         label: "Unité de transport",
-        isRequired: true,
         icon: Icons.local_shipping_outlined,
         value: selectedUniteTransport ?? "Sélectionner",
         onTap: () {
@@ -580,7 +564,6 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
       _buildTextField(
         controller: prixTransportController,
         label: "Prix transport",
-        isRequired: true,
         icon: Icons.local_shipping_outlined,
         isNumber: true,
         suffix: "FCFA",
@@ -797,7 +780,8 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
         label: RichText(
           text: TextSpan(
             text: label,
-            style: const TextStyle(color: AppColors.darkGrey),
+            style: const TextStyle(
+                color: Colors.black, fontWeight: FontWeight.bold, fontSize: 12),
             children: [
               if (isRequired)
                 const TextSpan(
@@ -911,7 +895,6 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
         selectedActeur == null ||
         selectedFournisseur == null ||
         selectedUnite1 == null ||
-        selectedMoyenTransport == null ||
         widget.enqueteCollecte == null ||
         _prix1Controller.text.isEmpty ||
         _prix2Controller.text.isEmpty) {
@@ -949,9 +932,9 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
         enqueteCollecte: widget.enqueteCollecte,
         dateAjout: DateTime.now().toString(),
         origineProduit: safeText(_origineController) ?? "",
-        prixTransport: safeText(prixTransportController)!,
+        prixTransport: safeText(prixTransportController) ?? "",
         moyenTransport: selectedMoyenTransport ?? "",
-        uniteTransport: selectedUniteTransport,
+        uniteTransport: selectedUniteTransport ?? "",
         fournisseur: selectedFournisseur!,
         clientPrincipal: selectedClient!,
         niveau: selectedNiveau,
