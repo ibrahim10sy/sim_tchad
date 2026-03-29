@@ -5,5 +5,5 @@ import 'app.dart';
 void main() async{ 
    WidgetsFlutterBinding.ensureInitialized();
   await openDatabaseConnection(); 
-  runApp(const MyApp());
+  runApp(const MyApp()); 
 }

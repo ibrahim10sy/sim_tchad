@@ -370,15 +370,12 @@ Future<bool> syncDataMarcheByFicheServer(
         "origineProduit": item.origineProduit ?? null,
         "observation": item.observation ?? null,
         "dateAjout": item.dateAjout ?? null,
+        "commercant": item.commercant ?? null,
         "produit": {
           "idProduit": item.produit?.idProduit,
           "nomProduit": item.produit?.nomProduit,
         },
-        "acteur": item.acteur != null
-            ? {
-                "idActeur": item.acteur?.idActeur,
-              }
-            : null,
+       
         "niveau": item.niveau != null
             ? {
                 "idNiveauApprovisionnement":
@@ -760,15 +757,14 @@ Future<bool> syncDataUpdateServer() async {
             "origineProduit": item.origineProduit,
             "observation": item.observation,
             "dateAjout": item.dateAjout,
+            "commercant": item.commercant,
 
             // 🔥 relations (safe null)
             "produit": item.produit?.idProduit != null
                 ? {"idProduit": item.produit!.idProduit}
                 : null,
 
-            "acteur": item.acteur?.idActeur != null
-                ? {"idActeur": item.acteur!.idActeur}
-                : null,
+            
 
             "niveau": item.niveau?.idNiveauApprovisionnement != null
                 ? {

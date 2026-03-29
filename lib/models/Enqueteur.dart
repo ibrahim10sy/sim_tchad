@@ -16,6 +16,7 @@ class Enqueteur {
   String? dateModif;
   bool? statutEnqueteur;
   bool? resetPassword;
+  bool isAnader;
   Acteur? acteur;
   Commune? commune;
 
@@ -31,6 +32,7 @@ class Enqueteur {
     this.dateAjout,
     this.dateModif,
     required this.statutEnqueteur,
+    required this.isAnader,
     required this.resetPassword,
     this.acteur,
     this.commune,
@@ -75,6 +77,7 @@ static Commune? _parseCommune(dynamic data) {
     dateModif: json['dateModif'] ?? '',
     statutEnqueteur: json['statutEnqueteur'] ?? false,
     resetPassword: json['resetPassword'] ?? false,
+    isAnader: json['isAnader'] ?? false,
     acteur: _parseActeur(json['acteur']),
     commune: _parseCommune(json['commune']),
   );
@@ -95,6 +98,7 @@ static Commune? _parseCommune(dynamic data) {
       'dateModif': dateModif,
       'statutEnqueteur': statutEnqueteur,
       'resetPassword': resetPassword,
+      'isAnader': isAnader,
       'acteur': acteur?.toJson(),
       'commune': commune?.toJson(),
     };

@@ -9,7 +9,7 @@ import 'package:sim_tchad/models/Enqueteur.dart';
 import 'package:sim_tchad/models/Magasin.dart';
 import 'package:sim_tchad/models/NiveauApprovisionnement.dart';
 import 'package:sim_tchad/models/Produit.dart';
-import 'package:sim_tchad/models/Unite.dart';
+import 'package:sim_tchad/models/UniteConventionnelle.dart';
 import 'package:sim_tchad/models/Variete.dart';
 import 'package:sim_tchad/models/prixMagasin.dart';
 import 'package:sim_tchad/utils/database_service.dart';
@@ -49,7 +49,7 @@ class _UpdatePrixMagasinState extends State<UpdatePrixMagasin> {
   String? selectedUniteTransport;
   String? selectedMoyenTransport;
   Produit? selectedProduit;
-  Unite? selectedUnite;
+  UniteConventionnelle? selectedUnite;
   String? selectedUniteMesure;
   Variete? selectedVariete;
   NiveauApprovisionnement? selectedNiveau;
@@ -61,7 +61,7 @@ class _UpdatePrixMagasinState extends State<UpdatePrixMagasin> {
   List<CategorieProduit> categorieProduit = [];
   List<BassinProduction> bassins = [];
   List<Magasin> magasins = [];
-  List<Unite> unites = [];
+  List<UniteConventionnelle> unites = [];
   List<Variete> variete = [];
   List<String> moyenTransport = ["Moto", "Tricycle", "Camion", "Pick-up"];
   List<String> uniteTransport = ["Sac", "Carton", "Caisse", "Panier", "Bac"];
@@ -172,7 +172,10 @@ class _UpdatePrixMagasinState extends State<UpdatePrixMagasin> {
         bassins = bassinData.map((m) => BassinProduction.fromJson(m)).toList();
         print("${bassins.length}");
         produit = produitData.map((m) => Produit.fromJson(m)).toList();
-        unites = uniteData.map((m) => Unite.fromJson(m)).toList();
+        unites = uniteData
+    .map((m) => UniteConventionnelle.fromJson(m))
+    .where((u) => (u.uniteStock))
+    .toList();
         variete = varieteData.map((m) => Variete.fromJson(m)).toList();
         categorieProduit =
             catData.map((m) => CategorieProduit.fromJson(m)).toList();
@@ -193,7 +196,7 @@ class _UpdatePrixMagasinState extends State<UpdatePrixMagasin> {
           if (p!.uniteMesure != null) {
             selectedUnite = unites.firstWhere(
               (u) => u.libelle == p!.uniteMesure,
-              orElse: () => Unite(libelle: p!.uniteMesure),
+              orElse: () => UniteConventionnelle(libelle: p!.uniteMesure),
             );
           }
 
@@ -250,8 +253,8 @@ class _UpdatePrixMagasinState extends State<UpdatePrixMagasin> {
           stockDisponible: safeText(stockController)!,
           variete: selectedVariete!.libelle ?? "",
           age: safeText(ageController) ?? "",
-          prixTransport: safeText(prixTransportController)!,
-          prixVente: safeText(prixVenteController)!,
+          prixTransport: safeText(prixTransportController) ?? "",
+          prixVente: safeText(prixVenteController) ?? "",
           observation: safeText(observationController) ?? "",
           bassinProduction: selectedBassin,
           magasin: widget.magasin,
@@ -467,7 +470,7 @@ class _UpdatePrixMagasinState extends State<UpdatePrixMagasin> {
         isRequired: true,
         icon: Icons.straighten,
         value: selectedUnite?.libelle ?? "Sélectionner",
-        onTap: () => SelectorBottomSheet.show<Unite>(
+        onTap: () => SelectorBottomSheet.show<UniteConventionnelle>(
           context: context,
           title: "Unités",
           items: unites,

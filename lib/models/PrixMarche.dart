@@ -32,11 +32,11 @@ class PrixMarche {
   String? dateModif;
   String? latitude;
   String? longitude;
+  String? commercant;
 
   Produit? produit;
   NiveauApprovisionnement? niveau;
   Marche? marche;
-  Acteur? acteur;
   Enqueteur? enqueteur;
   EnqueteCollecte? enqueteCollecte;
 
@@ -68,7 +68,7 @@ class PrixMarche {
     this.produit,
     this.niveau,
     this.marche,
-    this.acteur,
+    this.commercant,
     this.enqueteur,
     this.enqueteCollecte,
   });
@@ -100,10 +100,10 @@ class PrixMarche {
       'dateModif': dateModif,
       'latitude': latitude,
       'longitude': longitude,
+      'commercant': commercant,
       'produit': produit != null ? jsonEncode(produit!.toJson()) : null,
       'niveau': niveau != null ? jsonEncode(niveau!.toJson()) : null,
       'marche': marche != null ? jsonEncode(marche!.toJson()) : null,
-      'acteur': acteur != null ? jsonEncode(acteur!.toJson()) : null,
       'enqueteur': enqueteur != null ? jsonEncode(enqueteur!.toJson()) : null,
       'enqueteCollecte': enqueteCollecte != null
           ? jsonEncode(enqueteCollecte!.toJson())
@@ -145,7 +145,7 @@ class PrixMarche {
           ? NiveauApprovisionnement.fromJson(json['niveau'])
           : null,
       marche: json['marche'] != null ? Marche.fromJson(json['marche']) : null,
-      acteur: json['acteur'] != null ? Acteur.fromJson(json['acteur']) : null,
+      commercant: json['commercant'] != null ? json['commercant'] : null,
       enqueteur: json['enqueteur'] != null
           ? Enqueteur.fromJson(json['enqueteur'])
           : null,
@@ -191,9 +191,7 @@ class PrixMarche {
       marche: map['marche'] != null
           ? Marche.fromJson(jsonDecode(map['marche']))
           : null,
-      acteur: map['acteur'] != null
-          ? Acteur.fromJson(jsonDecode(map['acteur']))
-          : null,
+      commercant: map['commercant'] != null ? map['commercant'] : null,
       enqueteur: map['enqueteur'] != null
           ? Enqueteur.fromJson(jsonDecode(map['enqueteur']))
           : null,
@@ -209,7 +207,7 @@ class PrixMarche {
     'age': age,
     'prixUnite1': prixUnite1,
     'prixUnite2': prixUnite2,
-    'prixUnite3': prixUnite3,
+    // 'prixUnite3': prixUnite3,
     'uniteMesure2': uniteMesure2,
     'uniteMesure3': uniteMesure3,
     'prixTransport': prixTransport,
@@ -227,7 +225,7 @@ class PrixMarche {
     'produit': produit != null ? jsonEncode(produit!.toJson()) : null,
     'niveau': niveau != null ? jsonEncode(niveau!.toJson()) : null,
     'marche': marche != null ? jsonEncode(marche!.toJson()) : null,
-    'acteur': acteur != null ? jsonEncode(acteur!.toJson()) : null,
+    'commercant': commercant != null ? jsonEncode(commercant) : null,
     'enqueteCollecte': enqueteCollecte != null
         ? jsonEncode(enqueteCollecte!.toJson())
         : null,

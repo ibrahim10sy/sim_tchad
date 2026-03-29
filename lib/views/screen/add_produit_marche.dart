@@ -7,7 +7,7 @@ import 'package:sim_tchad/models/Acteur.dart';
 import 'package:sim_tchad/models/CategorieProduit.dart';
 import 'package:sim_tchad/models/EnqueteCollecte.dart';
 import 'package:sim_tchad/models/Enqueteur.dart';
-import 'package:sim_tchad/models/Equivalence.dart';
+import 'package:sim_tchad/models/EquivalenceUnite.dart';
 import 'package:sim_tchad/models/Marche.dart';
 import 'package:sim_tchad/models/NiveauApprovisionnement.dart';
 import 'package:sim_tchad/models/PrixMarche.dart';
@@ -15,7 +15,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:sim_tchad/models/Produit.dart';
-import 'package:sim_tchad/models/Unite.dart';
+import 'package:sim_tchad/models/UniteConventionnelle.dart';
 import 'package:sim_tchad/models/Variete.dart';
 import 'package:sim_tchad/utils/database_service.dart';
 import 'package:sim_tchad/views/widgets/buildSelectField.dart';
@@ -47,7 +47,7 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
   // Contrôleurs pour les champs de texte
   final TextEditingController _prix1Controller = TextEditingController();
   final TextEditingController _prix2Controller = TextEditingController();
-  final TextEditingController _prix3Controller = TextEditingController();
+  // final TextEditingController _prix3Controller = TextEditingController();
   final TextEditingController _origineController = TextEditingController();
   final TextEditingController observationController = TextEditingController();
   final TextEditingController ageController = TextEditingController();
@@ -60,9 +60,9 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
   String? selectedUniteTransport;
   String? selectedMoyenTransport;
   Produit? selectedProduit;
-  Unite? selectedUnite1;
-  Acteur? selectedActeur;
-  Unite? selectedUnite2;
+  UniteConventionnelle? selectedUnite1;
+  String? selectedActeur;
+  UniteConventionnelle? selectedUnite2;
   String? selectedUniteMesure;
   String? selectedUniteMesure2;
   Variete? selectedVariete;
@@ -72,9 +72,9 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
   List<Produit> produit = [];
   List<Acteur> acteur = [];
   List<CategorieProduit> categorieProduit = [];
-  List<Unite> unites = [];
+  List<UniteConventionnelle> unites = [];
   List<Variete> variete = [];
-  List<Equivalence> equivalences = [];
+  List<EquivalenceUnite> equivalences = [];
   PrixMarche? p;
   CategorieProduit? selectedCategorie;
   File? _imageFile; // Pour la nouvelle photo capturée
@@ -82,6 +82,7 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
   String? pathImageToSave;
 
   // Listes de constantes (provenant de ton code)
+  List<String> commercant = ["Commerçant 1", "Commerçant 2", "Commerçant 3", "Commerçant 4"];
   List<String> moyenTransport = ["Moto", "Tricycle", "Camion", "Pick-up"];
   List<String> uniteTransport = ["Sac", "Carton", "Caisse", "Panier", "Bac"];
   List<String> qualites = ["Bon", "Très bon", "Moyen", "Mauvais"];
@@ -161,7 +162,7 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
     p = widget.prixMarche!;
     _prix1Controller.text = p!.prixUnite1 ?? "";
     _prix2Controller.text = p!.prixUnite2 ?? "";
-    _prix3Controller.text = p!.prixUnite3 ?? "";
+    // _prix3Controller.text = p!.prixUnite3 ?? "";
     prixTransportController.text = p!.prixTransport ?? "";
     observationController.text = p!.observation ?? "";
     ageController.text = p!.age ?? "";
@@ -173,10 +174,10 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
     selectedUniteTransport = p!.uniteTransport ?? "";
     selectedMoyenTransport = p!.moyenTransport ?? "";
     selectedProduit = p!.produit;
-    selectedActeur = p!.acteur;
+    selectedActeur = p!.commercant;
     selectedNiveau = p!.niveau;
     selectedUniteMesure = p!.uniteMesure2 ?? "";
-    selectedUniteMesure2 = p!.uniteMesure3 ?? "";
+    // selectedUniteMesure2 = p!.uniteMesure3 ?? "";
 
     // --- Récupérer l'image existante ---
     if (p!.image != null &&
@@ -202,11 +203,11 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
       final niveauxData =
           await DatabaseService.getAll("NiveauApprovisionnement");
       final produitData = await DatabaseService.getAll("Produit");
-      final uniteData = await DatabaseService.getAll("Unite");
+      final uniteData = await DatabaseService.getAll("UniteConventionnelle");
       final varieteData = await DatabaseService.getAll("Variete");
       final catData = await DatabaseService.getAll("CategorieProduit");
       final acteurs = await DatabaseService.getAll("Acteur");
-      final equiv = await DatabaseService.getAll("Equivalence");
+      final equiv = await DatabaseService.getAll("EquivalenceUnite");
 
       if (!mounted) return;
       setState(() {
@@ -214,13 +215,16 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
             .map((m) => NiveauApprovisionnement.fromJson(m))
             .toList();
         produit = produitData.map((m) => Produit.fromJson(m)).toList();
-        unites = uniteData.map((m) => Unite.fromJson(m)).toList();
+       unites = uniteData
+    .map((m) => UniteConventionnelle.fromJson(m))
+    .where((u) => !(u.uniteStock))
+    .toList();
         acteur = acteurs.map((m) => Acteur.fromJson(m)).toList();
         variete = varieteData.map((m) => Variete.fromJson(m)).toList();
         categorieProduit =
             catData.map((m) => CategorieProduit.fromJson(m)).toList();
         equivalences =
-            catData.map((m) => Equivalence.fromJson(m)).toList();
+            equiv.map((m) => EquivalenceUnite.fromJson(m)).toList();
       });
 
       // 🔥 IMPORTANT : RECONSTRUCTION DES SELECTED
@@ -238,15 +242,15 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
           if (p!.uniteMesure2 != null) {
             selectedUnite1 = unites.firstWhere(
               (u) => u.libelle == p!.uniteMesure2,
-              orElse: () => Unite(libelle: p!.uniteMesure2),
+              orElse: () => UniteConventionnelle(libelle: p!.uniteMesure2),
             );
           }
-          if (p!.uniteMesure3 != null) {
-            selectedUnite2 = unites.firstWhere(
-              (u) => u.libelle == p!.uniteMesure3,
-              orElse: () => Unite(libelle: p!.uniteMesure3),
-            );
-          }
+          // if (p!.uniteMesure3 != null) {
+          //   selectedUnite2 = unites.firstWhere(
+          //     (u) => u.libelle == p!.uniteMesure3,
+          //     orElse: () => Unite(libelle: p!.uniteMesure3),
+          //   );
+          // }
 
           // ✅ Qualité
           selectedQualite = p!.qualiteProduit;
@@ -360,18 +364,23 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
       const SizedBox(height: 10),
       SelectField(
         label: "Commerçant référant",
-        isRequired: true,
         icon: Icons.person_2_outlined,
-        value: selectedActeur?.nomActeur ?? "",
-        onTap: () => SelectorBottomSheet.show<Acteur>(
-          context: context,
-          title: "Acteur",
-          items: acteur,
-          itemLabel: (p) => p!.nomActeur ?? "",
-          selectedItem: selectedActeur,
-          onSelected: (p) => setState(() => selectedActeur = p),
-        ),
+        value: selectedActeur ?? "Sélectionner",
+        onTap: () {
+          if (qualites.isEmpty) return;
+          SelectorBottomSheet.show<String>(
+            context: context,
+            title: "Commerçant référant",
+            items: commercant,
+            itemLabel: (q) => q,
+            selectedItem: selectedActeur,
+            onSelected: (q) {
+              setState(() => selectedActeur = q);
+            },
+          );
+        },
       ),
+      
       SelectField(
         label: "Produit",
         isRequired: true,
@@ -438,7 +447,7 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
         isRequired: true,
         icon: Icons.straighten,
         value: selectedUnite1?.libelle ?? "Sélectionner",
-        onTap: () => SelectorBottomSheet.show<Unite>(
+        onTap: () => SelectorBottomSheet.show<UniteConventionnelle>(
           context: context,
           title: "Unités",
           items: unites,
@@ -892,7 +901,6 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
         selectedProduit == null ||
         selectedNiveau == null ||
         selectedClient == null ||
-        selectedActeur == null ||
         selectedFournisseur == null ||
         selectedUnite1 == null ||
         widget.enqueteCollecte == null ||
@@ -922,8 +930,9 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
         variete: selectedVariete!.libelle ?? "",
         prixUnite1: safeText(_prix1Controller)!,
         prixUnite2: safeText(_prix2Controller)!,
-        prixUnite3: safeText(_prix3Controller) ?? "",
+        // prixUnite3: safeText(_prix3Controller) ?? "",
         uniteMesure2: selectedUniteMesure ?? "",
+        commercant: selectedActeur ?? "",
         uniteMesure3: selectedUniteMesure2 ?? "",
         qualiteProduit: selectedQualite ?? "",
         etatRoute: selectedEtatRoute ?? "",
@@ -939,7 +948,6 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
         clientPrincipal: selectedClient!,
         niveau: selectedNiveau,
         age: safeText(ageController) ?? "",
-        acteur: selectedActeur,
         observation: safeText(observationController) ?? "",
         image: pathImageToSave,
       );

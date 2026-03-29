@@ -114,7 +114,13 @@ class _AffectPageState extends State<AffectPage> {
         'dateAjout',
         'filiere'
       ],
-      "Unite": ['idUnite', 'codeUnite', 'libelle', 'sigle'],
+      "UniteConventionnelle": [
+        'idUnite',
+        'libelle',
+        'sigle',
+        'conversion',
+        'uniteStock'
+      ],
       "Campagne": [
         'idCampagne',
         'codeCampagne',
@@ -135,9 +141,10 @@ class _AffectPageState extends State<AffectPage> {
         'whatsApp',
         'typeActeur'
       ],
-        "Equivalence": [
+      "EquivalenceUnite": [
         'id',
-        'unite',
+        'equivalenceUnite',
+        'uniteConventionnelle',
         'produit',
         'commune'
       ],
@@ -175,15 +182,19 @@ class _AffectPageState extends State<AffectPage> {
       ["produits", "Produit", "Produits"],
       ["bassins", "BassinProduction", "Bassins"],
       ["varietes", "Variete", "Variétés"],
-      ["unites", "Unite", "Unités"],
+      ["unites", "UniteConventionnelle", "UniteConventionnelle"],
       ["campagnes", "Campagne", "Campagnes"],
       ["acteurs/libelle", "Acteur", "Acteurs"],
       ["communes/enqueteur/$codeEnqueteur", "Commune", "Communes"],
       ["niveaux", "NiveauApprovisionnement", "Niveaux"],
       ["marches/enqueteur/$codeEnqueteur", "Marche", "Marchés"],
-      ["magasins/acteur/$codeActeur", "Magasin", "Magasins"],
+      ["magasins/acteur/$codeActeur/commune/$idCommune", "Magasin", "Magasins"],
       ["categories", "CategorieProduit", "Categories"],
-      ["equivalences/commune/$idCommune", "Equivalence", "Equivalence"]
+      [
+        "equivalences/commune/$idCommune",
+        "EquivalenceUnite",
+        "EquivalenceUnite"
+      ]
     ];
 
     for (var r in resources) {
@@ -525,20 +536,21 @@ class _AffectPageState extends State<AffectPage> {
                           CollecteMarche(marche: m, enqueteur: enqueteur))),
             )),
         const SizedBox(height: 16),
-        if (marches.isNotEmpty) _buildSectionTitle("Suivi des fluxs"),
-        CustomCollecteCard(
-          type: 'Suivi des flux',
-          label1: 'Localité',
-          value1: enqueteur!.commune!.nom,
-          label2: 'Point de collecte',
-          value2: enqueteur!.commune!.nom,
-          accentColor:
-              AppColors.institutionalGreen, // Vert clair pour les marchés
-          onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (_) => CollectSuivi(enqueteur: enqueteur))),
-        ),
+        if (enqueteur!.isAnader) _buildSectionTitle("Suivi des fluxs"),
+        if (enqueteur!.isAnader)
+          CustomCollecteCard(
+            type: 'Suivi des flux',
+            label1: 'Localité',
+            value1: enqueteur!.commune!.nom,
+            label2: 'Point de collecte',
+            value2: enqueteur!.commune!.nom,
+            accentColor:
+                AppColors.institutionalGreen, // Vert clair pour les marchés
+            onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => CollectSuivi(enqueteur: enqueteur))),
+          ),
         const SizedBox(height: 16),
         if (magasins.isNotEmpty) _buildSectionTitle("Magasins affectés"),
         ...magasins.map((m) => CustomCollecteCard(

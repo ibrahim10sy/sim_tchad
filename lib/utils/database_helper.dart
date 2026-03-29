@@ -60,7 +60,7 @@ Future<Database> openDatabaseConnection() async {
     dateAjout TEXT,
     uniteMesure2 TEXT,
     uniteMesure3 TEXT,
-    acteur TEXT,
+    commercant TEXT,
     produit TEXT,
     niveau TEXT,
     marche TEXT,
@@ -92,7 +92,7 @@ Future<Database> openDatabaseConnection() async {
         uniteMesure2 TEXT,
         uniteMesure3 TEXT,
         produit TEXT,
-        acteur TEXT,
+        commercant TEXT,
         niveau TEXT,
         marche TEXT,
         enqueteur TEXT,
@@ -299,16 +299,28 @@ Future<Database> openDatabaseConnection() async {
 
   /// UNITE
   await db.execute('''
-  CREATE TABLE IF NOT EXISTS Unite (
+  CREATE TABLE IF NOT EXISTS UniteConventionnelle(
     idUnite INTEGER PRIMARY KEY,
-    codeUnite TEXT,
     libelle TEXT,
     sigle TEXT
+    conversion TEXT,
+    uniteStock INTEGER
   )
   ''');
+
+  await db.execute('''
+  CREATE TABLE IF NOT EXISTS EquivalenceUnite(
+    id INTEGER PRIMARY KEY,
+    equivalenceUnite REAL,
+    uniteConventionnelle TEXT,
+    produit TEXT,
+    commune TEXT
+  )
+  ''');
+  
   await db.execute('''
   CREATE TABLE IF NOT EXISTS SuiviFlux (
-   idSuivi INTEGER PRIMARY KEY AUTOINCREMENT,
+    idSuivi INTEGER PRIMARY KEY AUTOINCREMENT,
           observation TEXT,
           fluxEntrantTonne REAL,
           fluxSortantTonne REAL,
@@ -323,9 +335,10 @@ Future<Database> openDatabaseConnection() async {
           commune TEXT
   )
   ''');
+
   await db.execute('''
   CREATE TABLE IF NOT EXISTS SuiviFluxs (
-   idSuivi  INTEGER PRIMARY KEY,
+      idSuivi  INTEGER PRIMARY KEY,
           codeSuivi TEXT,
           observation TEXT,
           fluxEntrantTonne REAL,
@@ -341,6 +354,7 @@ Future<Database> openDatabaseConnection() async {
           commune TEXT
   )
   ''');
+
   await db.execute('''
   CREATE TABLE IF NOT EXISTS SuiviCampagne (
    idSuiviCampagne INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -361,6 +375,7 @@ Future<Database> openDatabaseConnection() async {
           enqueteCampagne TEXT
   )
   ''');
+
   await db.execute('''
   CREATE TABLE IF NOT EXISTS SuiviCampagnes (
    idSuiviCampagne INTEGER PRIMARY KEY,
@@ -400,7 +415,7 @@ Future<Database> openDatabaseConnection() async {
 
   await db.execute('''
   CREATE TABLE IF NOT EXISTS  Campagne(
-    idCampagne INTEGER PRIMARY KEY,
+          idCampagne INTEGER PRIMARY KEY,
           codeCampagne TEXT,
           commentaire TEXT,
           ficheRapport TEXT,

@@ -1811,3 +1811,261 @@ void dispose() {
     );
   }
 }
+
+//equi 
+{
+        "id": 1,
+        "equivalenceUnite": 2.2,
+        "unite": {
+            "idUnite": 1,
+            "codeUnite": "string",
+            "libelle": "string",
+            "sigle": "string",
+            "imageUrl": null,
+            "equivalentKgLitre": 12.0,
+            "description": null,
+            "dateAjout": "2026-03-02 00:46",
+            "dateModif": null,
+            "statut": true,
+            "produit": []
+        },
+        "produit": {
+            "idProduit": 1,
+            "codeProduit": "c001",
+            "nomProduit": "produit 1",
+            "imageUrl": null,
+            "description": "rqs",
+            "dateAjout": "2026-03-14 01:17",
+            "dateModif": null,
+            "statut": true,
+            "categorieProduit": {
+                "idCategorieProduit": 1,
+                "codeCategorie": "qwaaaa",
+                "libelle": "string",
+                "description": "string",
+                "dateAjout": "2026-03-10 14:10",
+                "dateModif": "string",
+                "filiere": {
+                    "idFiliere": 2,
+                    "codeFiliere": "f12",
+                    "libelle": "gfhguhg",
+                    "description": "string",
+                    "dateAjout": "2026-03-02 00:38",
+                    "dateModif": null,
+                    "statut": true
+                }
+            }
+        },
+        "commune": {
+            "idCommune": 1,
+            "codeCommune": "c001",
+            "nom": "commune 1",
+            "description": "commune",
+            "departement": {
+                "idDepartement": 1,
+                "codeDepartement": "d001",
+                "nom": "departement 1",
+                "description": "string",
+                "province": {
+                    "idProvince": 1,
+                    "codeProvince": "c001",
+                    "nom": "province 1",
+                    "description": "string"
+                }
+            }
+        }
+    },
+class AddProduitMarche extends StatefulWidget {
+  final bool? isEdit;
+  final Marche? marche;
+  final Enqueteur? enqueteur;
+  final EnqueteCollecte? enqueteCollecte;
+  final PrixMarche? prixMarche;
+
+  AddProduitMarche({
+    super.key,
+    this.enqueteCollecte,
+    this.enqueteur,
+    this.isEdit = false,
+    this.marche,
+    this.prixMarche,
+  });
+
+  @override
+  State<AddProduitMarche> createState() => _AddProduitMarcheState();
+}
+
+class _AddProduitMarcheState extends State<AddProduitMarche> {
+  final _formKey = GlobalKey<FormState>();
+
+  // Contrôleurs pour les champs de texte
+  final TextEditingController _prix1Controller = TextEditingController();
+  final TextEditingController _prix2Controller = TextEditingController();
+  final TextEditingController _origineController = TextEditingController();
+  final TextEditingController observationController = TextEditingController();
+  final TextEditingController ageController = TextEditingController();
+  final TextEditingController prixTransportController = TextEditingController();
+ 
+  List<Equivalence> equivalences = [];
+  PrixMarche? p;
+ 
+
+  Future<void> _fetchDataLocal() async {
+    if (!mounted) return;
+    setState(() => isLoading = true);
+
+    try {
+     
+      final equiv = await DatabaseService.getAll("Equivalence");
+
+      if (!mounted) return;
+      setState(() {
+      
+        equivalences =
+            catData.map((m) => Equivalence.fromJson(m)).toList();
+      });
+      }
+    } finally {
+      setState(() => isLoading = false);
+    }
+  }
+
+  // --- SECTION PRODUIT ---
+  Widget _buildProductSection() {
+    return _buildCardWrapper([
+      SelectField(
+        label: "Filtrer par Catégorie",
+        isRequired: true,
+        icon: Icons.filter_list,
+        value: selectedCategorie?.libelle ?? "Toutes les catégories",
+        isHighlight: selectedCategorie != null,
+        onTap: () => SelectorBottomSheet.show<CategorieProduit>(
+          context: context,
+          title: "Catégories",
+          items: categorieProduit,
+          itemLabel: (c) => c.libelle ?? "",
+          selectedItem: selectedCategorie,
+          onSelected: (c) => setState(() {
+            selectedCategorie = c;
+            selectedProduit = null;
+          }),
+        ),
+      ),
+      const SizedBox(height: 10),
+      SelectField(
+        label: "Commerçant référant",
+        isRequired: true,
+        icon: Icons.person_2_outlined,
+        value: selectedActeur?.nomActeur ?? "",
+        onTap: () => SelectorBottomSheet.show<Acteur>(
+          context: context,
+          title: "Acteur",
+          items: acteur,
+          itemLabel: (p) => p!.nomActeur ?? "",
+          selectedItem: selectedActeur,
+          onSelected: (p) => setState(() => selectedActeur = p),
+        ),
+      ),
+      SelectField(
+        label: "Produit",
+        isRequired: true,
+        icon: Icons.shopping_basket_outlined,
+        value: selectedProduit?.nomProduit ?? "",
+        onTap: () => SelectorBottomSheet.show<Produit>(
+          context: context,
+          title: "Produits",
+          items: filteredProduits,
+          itemLabel: (p) => p!.nomProduit ?? "",
+          selectedItem: selectedProduit,
+          onSelected: (p) => setState(() => selectedProduit = p),
+        ),
+      ),
+      SelectField(
+        label: "Variété",
+        icon: Icons.category_outlined,
+        value: selectedVariete?.libelle ?? "Sélectionner",
+        onTap: () {
+          if (variete.isEmpty) return;
+          SelectorBottomSheet.show<Variete>(
+            context: context,
+            title: "Variétés",
+            items: variete,
+            itemLabel: (v) => v.libelle ?? "",
+            selectedItem: selectedVariete,
+            onSelected: (v) {
+              setState(() => selectedVariete = v);
+            },
+          );
+        },
+      ),
+      SelectField(
+        label: "Etat du produit",
+        icon: Icons.star_outline,
+        value: selectedQualite ?? "Sélectionner",
+        onTap: () {
+          if (qualites.isEmpty) return;
+          SelectorBottomSheet.show<String>(
+            context: context,
+            title: "Qualité",
+            items: qualites,
+            itemLabel: (q) => q,
+            selectedItem: selectedQualite,
+            onSelected: (q) {
+              setState(() => selectedQualite = q);
+            },
+          );
+        },
+      ),
+      _buildTextField(
+          controller: ageController,
+          label: "Âge (jours)",
+          icon: Icons.history,
+          isNumber: true),
+    ]);
+  }
+
+  // --- SECTION PRIX ---
+  Widget _buildPriceSection() {
+    return _buildCardWrapper([
+      SelectField(
+        label: "Unité de mesure",
+        isRequired: true,
+        icon: Icons.straighten,
+        value: selectedUnite1?.libelle ?? "Sélectionner",
+        onTap: () => SelectorBottomSheet.show<Unite>(
+          context: context,
+          title: "Unités",
+          items: unites,
+          itemLabel: (u) => u.libelle ?? "",
+          selectedItem: selectedUnite1,
+          onSelected: (u) {
+            setState(() {
+              selectedUnite1 = u;
+              selectedUniteMesure = u.libelle;
+            });
+          },
+        ),
+      ),
+
+      _buildTextField(
+        controller: _prix2Controller,
+        isRequired: true,
+        label: "Prix unite",
+        icon: Icons.payments_outlined,
+        isNumber: true,
+        suffix: "FCFA",
+      ),
+      _buildTextField(
+        controller: _prix1Controller,
+        isRequired: true,
+        label: "Equivalence en kg",
+        icon: Icons.payments_outlined,
+        isNumber: true,
+        suffix: "FCFA",
+      ),
+     
+    ]);
+  }
+
+}
+ici on doit calculer automatiquemenet l'equivalence des prix en kg en en fonction de unite de n=mesure  et le produit selectionner 

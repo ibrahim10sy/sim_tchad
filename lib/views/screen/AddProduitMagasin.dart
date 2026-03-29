@@ -9,7 +9,7 @@ import 'package:sim_tchad/models/Enqueteur.dart';
 import 'package:sim_tchad/models/Magasin.dart';
 import 'package:sim_tchad/models/NiveauApprovisionnement.dart';
 import 'package:sim_tchad/models/Produit.dart';
-import 'package:sim_tchad/models/Unite.dart';
+import 'package:sim_tchad/models/UniteConventionnelle.dart';
 import 'package:sim_tchad/models/Variete.dart';
 import 'package:sim_tchad/models/prixMagasin.dart';
 import 'package:sim_tchad/utils/database_service.dart';
@@ -54,7 +54,7 @@ class _AddProduitMagasinState extends State<AddProduitMagasin> {
   String? selectedUniteTransport;
   String? selectedMoyenTransport;
   Produit? selectedProduit;
-  Unite? selectedUnite;
+  UniteConventionnelle? selectedUnite;
   String? selectedUniteMesure;
   Variete? selectedVariete;
   NiveauApprovisionnement? selectedNiveau;
@@ -66,7 +66,7 @@ class _AddProduitMagasinState extends State<AddProduitMagasin> {
   List<CategorieProduit> categorieProduit = [];
   List<BassinProduction> bassins = [];
   List<Magasin> magasins = [];
-  List<Unite> unites = [];
+  List<UniteConventionnelle> unites = [];
   List<Variete> variete = [];
   List<String> moyenTransport = ["Moto", "Tricycle", "Camion", "Pick-up"];
   List<String> uniteTransport = ["Sac", "Carton", "Caisse", "Panier", "Bac"];
@@ -165,7 +165,7 @@ class _AddProduitMagasinState extends State<AddProduitMagasin> {
           await DatabaseService.getAll("NiveauApprovisionnement");
       final produitData = await DatabaseService.getAll("Produit");
       final bassinData = await DatabaseService.getAll("BassinProduction");
-      final uniteData = await DatabaseService.getAll("Unite");
+      final uniteData = await DatabaseService.getAll("UniteConventionnelle");
       final varieteData = await DatabaseService.getAll("Variete");
       final catData = await DatabaseService.getAll("CategorieProduit");
 
@@ -177,7 +177,10 @@ class _AddProduitMagasinState extends State<AddProduitMagasin> {
         bassins = bassinData.map((m) => BassinProduction.fromJson(m)).toList();
         print("${bassins.length}");
         produit = produitData.map((m) => Produit.fromJson(m)).toList();
-        unites = uniteData.map((m) => Unite.fromJson(m)).toList();
+       unites = uniteData
+    .map((m) => UniteConventionnelle.fromJson(m))
+    .where((u) => !(u.uniteStock))
+    .toList();
         variete = varieteData.map((m) => Variete.fromJson(m)).toList();
         categorieProduit =
             catData.map((m) => CategorieProduit.fromJson(m)).toList();
@@ -198,7 +201,7 @@ class _AddProduitMagasinState extends State<AddProduitMagasin> {
           if (p!.uniteMesure != null) {
             selectedUnite = unites.firstWhere(
               (u) => u.libelle == p!.uniteMesure,
-              orElse: () => Unite(libelle: p!.uniteMesure),
+              orElse: () => UniteConventionnelle(libelle: p!.uniteMesure),
             );
           }
 
@@ -232,8 +235,8 @@ class _AddProduitMagasinState extends State<AddProduitMagasin> {
         selectedVariete == null ||
         prixVenteController == null ||
         prixBordChampController == null ||
-        prixBordChampController == null ||
-        selectedNiveau == null) {
+        prixBordChampController == null 
+        ) {
           ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
             content: Text("Veuillez renseigné tout les champs obligatoire")),
@@ -259,7 +262,7 @@ class _AddProduitMagasinState extends State<AddProduitMagasin> {
           stockDisponible: safeText(stockController)!,
           variete: selectedVariete!.libelle ?? "",
           age: safeText(ageController) ?? "",
-          prixTransport: safeText(prixTransportController)!,
+          prixTransport: safeText(prixTransportController) ?? "",
           prixVente: safeText(prixVenteController)!,
           observation: safeText(observationController) ?? "",
           bassinProduction: selectedBassin,
@@ -422,7 +425,6 @@ class _AddProduitMagasinState extends State<AddProduitMagasin> {
       SelectField(
         label: "Variété",
         icon: Icons.category_outlined,
-        isRequired: true,
         value: selectedVariete?.libelle ?? "Sélectionner",
         onTap: () {
           if (variete.isEmpty) return;
@@ -439,39 +441,30 @@ class _AddProduitMagasinState extends State<AddProduitMagasin> {
           );
         },
       ),
-      Row(
-        children: [
-          Expanded(
-            child: SelectField(
-              label: "Qualité",
-              icon: Icons.star_outline,
-              value: selectedQualite ?? "Sélectionner",
-              onTap: () {
-                if (qualites.isEmpty) return;
-
-                SelectorBottomSheet.show<String>(
-                  context: context,
-                  title: "Qualité",
-                  items: qualites,
-                  itemLabel: (q) => q,
-                  selectedItem: selectedQualite,
-                  onSelected: (q) {
-                    setState(() => selectedQualite = q);
-                  },
-                );
-              },
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _buildTextField(
-                controller: ageController,
-                label: "Âge (jours)",
-                icon: Icons.history,
-                isNumber: true),
-          ),
-        ],
+      SelectField(
+        label: "Etat du produit",
+        icon: Icons.star_outline,
+        value: selectedQualite ?? "Sélectionner",
+        onTap: () {
+          if (qualites.isEmpty) return;
+            
+          SelectorBottomSheet.show<String>(
+            context: context,
+            title: "Qualité",
+            items: qualites,
+            itemLabel: (q) => q,
+            selectedItem: selectedQualite,
+            onSelected: (q) {
+              setState(() => selectedQualite = q);
+            },
+          );
+        },
       ),
+      _buildTextField(
+          controller: ageController,
+          label: "Âge (jours)",
+          icon: Icons.history,
+          isNumber: true),
     ]);
   }
 
@@ -483,7 +476,7 @@ class _AddProduitMagasinState extends State<AddProduitMagasin> {
         isRequired: true,
         icon: Icons.straighten,
         value: selectedUnite?.libelle ?? "Sélectionner",
-        onTap: () => SelectorBottomSheet.show<Unite>(
+        onTap: () => SelectorBottomSheet.show<UniteConventionnelle>(
           context: context,
           title: "Unités",
           items: unites,

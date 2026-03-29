@@ -12,7 +12,7 @@ import 'package:sim_tchad/models/NiveauApprovisionnement.dart';
 import 'package:sim_tchad/models/PrixMarche.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sim_tchad/models/Produit.dart';
-import 'package:sim_tchad/models/Unite.dart';
+import 'package:sim_tchad/models/UniteConventionnelle.dart';
 import 'package:sim_tchad/models/Variete.dart';
 import 'package:sim_tchad/utils/database_service.dart';
 import 'package:sim_tchad/views/widgets/buildSelectField.dart';
@@ -39,7 +39,7 @@ class _UpdatePrixMarcheState extends State<UpdatePrixMarche> {
   // Contrôleurs pour les champs de texte
   final TextEditingController _prix1Controller = TextEditingController();
   final TextEditingController _prix2Controller = TextEditingController();
-  final TextEditingController _prix3Controller = TextEditingController();
+  // final TextEditingController _prix3Controller = TextEditingController();
   final TextEditingController _origineController = TextEditingController();
   final TextEditingController observationController = TextEditingController();
   final TextEditingController ageController = TextEditingController();
@@ -52,9 +52,9 @@ class _UpdatePrixMarcheState extends State<UpdatePrixMarche> {
   String? selectedUniteTransport;
   String? selectedMoyenTransport;
   Produit? selectedProduit;
-  Unite? selectedUnite1;
-  Acteur? selectedActeur;
-  Unite? selectedUnite2;
+  UniteConventionnelle? selectedUnite1;
+  String? selectedActeur;
+  UniteConventionnelle? selectedUnite2;
   String? selectedUniteMesure;
   String? selectedUniteMesure2;
   Variete? selectedVariete;
@@ -64,7 +64,7 @@ class _UpdatePrixMarcheState extends State<UpdatePrixMarche> {
   List<Produit> produit = [];
   List<Acteur> acteur = [];
   List<CategorieProduit> categorieProduit = [];
-  List<Unite> unites = [];
+  List<UniteConventionnelle> unites = [];
   List<Variete> variete = [];
   PrixMarche? p;
   CategorieProduit? selectedCategorie;
@@ -72,6 +72,12 @@ class _UpdatePrixMarcheState extends State<UpdatePrixMarche> {
   String? existingImage; // Pour le chemin de l'image venant de la DB
   String? pathImageToSave;
 
+  List<String> commercant = [
+    "Commerçant 1",
+    "Commerçant 2",
+    "Commerçant 3",
+    "Commerçant 4"
+  ];
   // Listes de constantes (provenant de ton code)
   List<String> moyenTransport = ["Moto", "Tricycle", "Camion", "Pick-up"];
   List<String> uniteTransport = ["Sac", "Carton", "Caisse", "Panier", "Bac"];
@@ -152,7 +158,7 @@ class _UpdatePrixMarcheState extends State<UpdatePrixMarche> {
     p = widget.prixMarche!;
     _prix1Controller.text = p!.prixUnite1 ?? "";
     _prix2Controller.text = p!.prixUnite2 ?? "";
-    _prix3Controller.text = p!.prixUnite3 ?? "";
+    // _prix3Controller.text = p!.prixUnite3 ?? "";
     prixTransportController.text = p!.prixTransport ?? "";
     observationController.text = p!.observation ?? "";
     ageController.text = p!.age ?? "";
@@ -164,11 +170,11 @@ class _UpdatePrixMarcheState extends State<UpdatePrixMarche> {
     selectedUniteTransport = p!.uniteTransport ?? "";
     selectedMoyenTransport = p!.moyenTransport ?? "";
     selectedProduit = p!.produit;
-    selectedActeur = p!.acteur;
+    selectedActeur = p!.commercant ?? "";
     selectedNiveau = p!.niveau;
     selectedUniteMesure = p!.uniteMesure2 ?? "";
     selectedUniteMesure2 = p!.uniteMesure3 ?? "";
-
+    selectedActeur = p!.commercant ?? "";
     // --- Récupérer l'image existante ---
     if (p!.image != null &&
         p!.image!.isNotEmpty &&
@@ -192,7 +198,7 @@ class _UpdatePrixMarcheState extends State<UpdatePrixMarche> {
       final niveauxData =
           await DatabaseService.getAll("NiveauApprovisionnement");
       final produitData = await DatabaseService.getAll("Produit");
-      final uniteData = await DatabaseService.getAll("Unite");
+      final uniteData = await DatabaseService.getAll("UniteConventionnelle");
       final varieteData = await DatabaseService.getAll("Variete");
       final catData = await DatabaseService.getAll("CategorieProduit");
       final acteurs = await DatabaseService.getAll("Acteur");
@@ -202,7 +208,10 @@ class _UpdatePrixMarcheState extends State<UpdatePrixMarche> {
             .map((m) => NiveauApprovisionnement.fromJson(m))
             .toList();
         produit = produitData.map((m) => Produit.fromJson(m)).toList();
-        unites = uniteData.map((m) => Unite.fromJson(m)).toList();
+       unites = uniteData
+    .map((m) => UniteConventionnelle.fromJson(m))
+    .where((u) => !(u.uniteStock))
+    .toList();
         acteur = acteurs.map((m) => Acteur.fromJson(m)).toList();
         variete = varieteData.map((m) => Variete.fromJson(m)).toList();
         categorieProduit =
@@ -224,13 +233,13 @@ class _UpdatePrixMarcheState extends State<UpdatePrixMarche> {
           if (p!.uniteMesure2 != null) {
             selectedUnite1 = unites.firstWhere(
               (u) => u.libelle == p!.uniteMesure2,
-              orElse: () => Unite(libelle: p!.uniteMesure2),
+              orElse: () => UniteConventionnelle(libelle: p!.uniteMesure2),
             );
           }
-          if (p!.uniteMesure3 != null) {
-            selectedUnite2 = unites.firstWhere(
-              (u) => u.libelle == p!.uniteMesure3,
-              orElse: () => Unite(libelle: p!.uniteMesure3),
+          if (p!.commercant != null) {
+            selectedActeur = commercant.firstWhere(
+              (u) => u == p!.commercant,
+              orElse: () => p!.commercant!,
             );
           }
 
@@ -257,7 +266,7 @@ class _UpdatePrixMarcheState extends State<UpdatePrixMarche> {
       backgroundColor: AppColors.lightGrey,
       appBar: AppBar(
         title: Text("Modification",
-            style: const TextStyle(fontWeight: FontWeight.bold ,fontSize: 16)),
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
         backgroundColor: AppColors.institutionalGreen,
         foregroundColor: Colors.white,
         elevation: 0,
@@ -342,17 +351,21 @@ class _UpdatePrixMarcheState extends State<UpdatePrixMarche> {
       const SizedBox(height: 10),
       SelectField(
         label: "Commerçant référant",
-        isRequired: true,
         icon: Icons.person_2_outlined,
-        value: selectedActeur?.nomActeur ?? "",
-        onTap: () => SelectorBottomSheet.show<Acteur>(
-          context: context,
-          title: "Acteur",
-          items: acteur,
-          itemLabel: (p) => p!.nomActeur ?? "",
-          selectedItem: selectedActeur,
-          onSelected: (p) => setState(() => selectedActeur = p),
-        ),
+        value: selectedActeur ?? "Sélectionner",
+        onTap: () {
+          if (qualites.isEmpty) return;
+          SelectorBottomSheet.show<String>(
+            context: context,
+            title: "Commerçant référant",
+            items: commercant,
+            itemLabel: (q) => q,
+            selectedItem: selectedActeur,
+            onSelected: (q) {
+              setState(() => selectedActeur = q);
+            },
+          );
+        },
       ),
       SelectField(
         label: "Produit",
@@ -425,6 +438,33 @@ class _UpdatePrixMarcheState extends State<UpdatePrixMarche> {
   // --- SECTION PRIX ---
   Widget _buildPriceSection() {
     return _buildCardWrapper([
+      SelectField(
+        label: "Unité de mesure",
+        isRequired: true,
+        icon: Icons.straighten,
+        value: selectedUnite1?.libelle ?? "Sélectionner",
+        onTap: () => SelectorBottomSheet.show<UniteConventionnelle>(
+          context: context,
+          title: "Unités",
+          items: unites,
+          itemLabel: (u) => u.libelle ?? "",
+          selectedItem: selectedUnite1,
+          onSelected: (u) {
+            setState(() {
+              selectedUnite1 = u;
+              selectedUniteMesure = u.libelle;
+            });
+          },
+        ),
+      ),
+      _buildTextField(
+        controller: _prix2Controller,
+        isRequired: true,
+        label: "Prix unite",
+        icon: Icons.payments_outlined,
+        isNumber: true,
+        suffix: "FCFA",
+      ),
       _buildTextField(
         controller: _prix1Controller,
         isRequired: true,
@@ -432,80 +472,6 @@ class _UpdatePrixMarcheState extends State<UpdatePrixMarche> {
         icon: Icons.payments_outlined,
         isNumber: true,
         suffix: "FCFA",
-      ),
-      Row(
-        children: [
-          Expanded(
-            child: SelectField(
-              label: "Unité de mesure 1",
-              isRequired: true,
-              icon: Icons.straighten,
-              value: selectedUnite1?.libelle ?? "Sélectionner",
-              onTap: () => SelectorBottomSheet.show<Unite>(
-                context: context,
-                title: "Unités",
-                items: unites,
-                itemLabel: (u) => u.libelle ?? "",
-                selectedItem: selectedUnite1,
-                onSelected: (u) {
-                  setState(() {
-                    selectedUnite1 = u;
-                    selectedUniteMesure = u.libelle;
-                  });
-                },
-              ),
-            ),
-          ),
-          SizedBox(
-            width: 10,
-          ),
-          Expanded(
-            child: _buildTextField(
-              controller: _prix2Controller,
-              isRequired: true,
-              label: "Prix unite 1",
-              icon: Icons.agriculture,
-              isNumber: true,
-              suffix: "FCFA",
-            ),
-          ),
-        ],
-      ),
-      Row(
-        children: [
-          Expanded(
-            child: SelectField(
-              label: "Unité de mesure 2",
-              icon: Icons.straighten,
-              value: selectedUnite2?.libelle ?? "Sélectionner",
-              onTap: () => SelectorBottomSheet.show<Unite>(
-                context: context,
-                title: "Unités",
-                items: unites,
-                itemLabel: (u) => u.libelle ?? "",
-                selectedItem: selectedUnite2,
-                onSelected: (u) {
-                  setState(() {
-                    selectedUnite2 = u;
-                    selectedUniteMesure2 = u.libelle;
-                  });
-                },
-              ),
-            ),
-          ),
-          SizedBox(
-            width: 10,
-          ),
-          Expanded(
-            child: _buildTextField(
-              controller: _prix3Controller,
-              label: "Prix unite 2",
-              icon: Icons.agriculture,
-              isNumber: true,
-              suffix: "FCFA",
-            ),
-          ),
-        ],
       ),
     ]);
   }
@@ -516,7 +482,6 @@ class _UpdatePrixMarcheState extends State<UpdatePrixMarche> {
       SelectField(
         label: "Niveau d'Approvisionnement",
         icon: Icons.trending_up,
-        isRequired: true,
         value: selectedNiveau?.libelle ?? "",
         onTap: () => SelectorBottomSheet.show<NiveauApprovisionnement>(
           context: context,
@@ -529,7 +494,6 @@ class _UpdatePrixMarcheState extends State<UpdatePrixMarche> {
       ),
       SelectField(
         label: "Moyen de transport",
-        isRequired: true,
         icon: Icons.local_shipping_outlined,
         value: selectedMoyenTransport ?? "Sélectionner",
         onTap: () {
@@ -548,7 +512,6 @@ class _UpdatePrixMarcheState extends State<UpdatePrixMarche> {
       ),
       SelectField(
         label: "Unité de transport",
-        isRequired: true,
         icon: Icons.local_shipping_outlined,
         value: selectedUniteTransport ?? "Sélectionner",
         onTap: () {
@@ -767,7 +730,7 @@ class _UpdatePrixMarcheState extends State<UpdatePrixMarche> {
     );
   }
 
-   Widget _buildTextField({
+  Widget _buildTextField({
     required TextEditingController controller,
     required String label,
     required IconData icon,
@@ -895,12 +858,9 @@ class _UpdatePrixMarcheState extends State<UpdatePrixMarche> {
   Future<void> handleSubmit() async {
     if (selectedUniteMesure == null ||
         selectedProduit == null ||
-        selectedNiveau == null ||
         selectedClient == null ||
-        selectedActeur == null ||
         selectedFournisseur == null ||
         selectedUnite1 == null ||
-        selectedMoyenTransport == null ||
         widget.enqueteCollecte == null ||
         _prix1Controller.text.isEmpty ||
         _prix2Controller.text.isEmpty) {
@@ -927,9 +887,9 @@ class _UpdatePrixMarcheState extends State<UpdatePrixMarche> {
       final data = PrixMarche(
         // codePrix: p!.codePrix!,
         variete: selectedVariete!.libelle ?? "",
-        prixUnite1: safeText(_prix1Controller)!,
-        prixUnite2: safeText(_prix2Controller)!,
-        prixUnite3: safeText(_prix3Controller) ?? "",
+        prixUnite1: safeText(_prix1Controller) ?? "",
+        prixUnite2: safeText(_prix2Controller) ?? "",
+        // prixUnite3: safeText(_prix3Controller) ?? "",
         uniteMesure2: selectedUniteMesure ?? "",
         uniteMesure3: selectedUniteMesure2 ?? "",
         qualiteProduit: selectedQualite ?? "",
@@ -937,16 +897,15 @@ class _UpdatePrixMarcheState extends State<UpdatePrixMarche> {
         produit: selectedProduit,
         marche: widget.marche,
         enqueteCollecte: widget.enqueteCollecte,
-        dateAjout: DateTime.now().toString(),
         origineProduit: safeText(_origineController) ?? "",
         prixTransport: safeText(prixTransportController)!,
         moyenTransport: selectedMoyenTransport ?? "",
-        uniteTransport: selectedUniteTransport,
+        uniteTransport: selectedUniteTransport ?? "",
         fournisseur: selectedFournisseur!,
         clientPrincipal: selectedClient!,
         niveau: selectedNiveau,
+        commercant: selectedActeur ?? "",
         age: safeText(ageController) ?? "",
-        acteur: selectedActeur,
         observation: safeText(observationController) ?? "",
         image: pathImageToSave,
       );

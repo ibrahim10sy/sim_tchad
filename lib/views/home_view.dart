@@ -68,7 +68,7 @@ class _HomePageState extends State<HomePage>
         'uniteMesure2',
         'uniteMesure3',
         'produit',
-        'acteur',
+        'commercant',
         'niveau',
         'marche',
         'enqueteCollecte'
@@ -127,9 +127,10 @@ class _HomePageState extends State<HomePage>
         'nomBassin',
         'description'
       ],
-      "Equivalence": [
+      "EquivalenceUnite": [
         'id',
-        'unite',
+        'equivalenceUnite',
+        'uniteConventionnelle',
         'produit',
         'commune'
       ],
@@ -141,7 +142,13 @@ class _HomePageState extends State<HomePage>
         'dateAjout',
         'filiere'
       ],
-      "Unite": ['idUnite', 'codeUnite', 'libelle', 'sigle'],
+      "UniteConventionnelle": [
+        'idUnite',
+        'libelle',
+        'sigle',
+        'conversion',
+        'uniteStock'
+      ],
       "Campagne": [
         'idCampagne',
         'codeCampagne',
@@ -196,13 +203,13 @@ class _HomePageState extends State<HomePage>
       ["produits", "Produit", "Produits"],
       ["bassins", "BassinProduction", "Bassins"],
       ["varietes", "Variete", "Variétés"],
-      ["unites", "Unite", "Unités"],
+      ["unites", "UniteConventionnelle", "UniteConventionnelle"],
       ["campagnes", "Campagne", "Campagnes"],
       ["acteurs/libelle", "Acteur", "Acteurs"],
       ["communes/enqueteur/$codeEnqueteur", "Commune", "Communes"],
       ["niveaux", "NiveauApprovisionnement", "Niveaux"],
       ["marches/enqueteur/$codeEnqueteur", "Marche", "Marchés"],
-      ["magasins/acteur/$codeActeur", "Magasin", "Magasins"],
+      ["magasins/acteur/$codeActeur/commune/$idCommune", "Magasin", "Magasins"],
       ["categories", "CategorieProduit", "Categories"],
       [
         "prix-marches/enqueteur/$codeEnqueteur/not-validated",
@@ -215,7 +222,11 @@ class _HomePageState extends State<HomePage>
         "PrixMagasin"
       ],
       ["suivis/enqueteur/$codeEnqueteur/pending", "SuiviFluxs", "SuiviFlux"],
-      ["equivalences/commune/$idCommune", "Equivalence", "Equivalence"]
+      [
+        "equivalences/commune/$idCommune",
+        "EquivalenceUnite",
+        "EquivalenceUnite"
+      ]
     ];
 
     for (var r in resources) {
