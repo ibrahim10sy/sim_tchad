@@ -177,10 +177,11 @@ class _AddProduitMagasinState extends State<AddProduitMagasin> {
         bassins = bassinData.map((m) => BassinProduction.fromJson(m)).toList();
         print("${bassins.length}");
         produit = produitData.map((m) => Produit.fromJson(m)).toList();
-       unites = uniteData
-    .map((m) => UniteConventionnelle.fromJson(m))
-    .where((u) => !(u.uniteStock))
-    .toList();
+        unites = uniteData
+            .map((m) => UniteConventionnelle.fromJson(m))
+            .where((u) => !(u.uniteStock))
+            .toList();
+        print(unites);
         variete = varieteData.map((m) => Variete.fromJson(m)).toList();
         categorieProduit =
             catData.map((m) => CategorieProduit.fromJson(m)).toList();
@@ -232,12 +233,10 @@ class _AddProduitMagasinState extends State<AddProduitMagasin> {
         selectedProduit == null ||
         selectedBassin == null ||
         stockController == null ||
-        selectedVariete == null ||
         prixVenteController == null ||
         prixBordChampController == null ||
-        prixBordChampController == null 
-        ) {
-          ScaffoldMessenger.of(context).showSnackBar(
+        prixBordChampController == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
             content: Text("Veuillez renseigné tout les champs obligatoire")),
       );
@@ -260,7 +259,7 @@ class _AddProduitMagasinState extends State<AddProduitMagasin> {
           uniteMesure: selectedUniteMesure!,
           prixBordChamp: safeText(prixBordChampController)!,
           stockDisponible: safeText(stockController)!,
-          variete: selectedVariete!.libelle ?? "",
+          variete: selectedVariete?.libelle ?? "",
           age: safeText(ageController) ?? "",
           prixTransport: safeText(prixTransportController) ?? "",
           prixVente: safeText(prixVenteController)!,
@@ -268,7 +267,7 @@ class _AddProduitMagasinState extends State<AddProduitMagasin> {
           bassinProduction: selectedBassin,
           magasin: widget.magasin,
           produit: selectedProduit,
-          niveau: selectedNiveau,
+          niveau: selectedNiveau ?? null,
           qualiteProduit: selectedQualite ?? "",
           uniteTransport: selectedUniteTransport ?? "",
           moyenTransport: selectedMoyenTransport ?? "",
@@ -313,9 +312,11 @@ class _AddProduitMagasinState extends State<AddProduitMagasin> {
       appBar: AppBar(
         title: widget.isEdit == true
             ? Text("Modification",
-                style: const TextStyle(fontWeight: FontWeight.bold , fontSize: 16))
+                style:
+                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 16))
             : Text(widget.magasin!.nomMagasin,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                style:
+                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
         backgroundColor: AppColors.institutionalGreen,
         foregroundColor: Colors.white,
         elevation: 0,
@@ -447,7 +448,7 @@ class _AddProduitMagasinState extends State<AddProduitMagasin> {
         value: selectedQualite ?? "Sélectionner",
         onTap: () {
           if (qualites.isEmpty) return;
-            
+
           SelectorBottomSheet.show<String>(
             context: context,
             title: "Qualité",
@@ -550,7 +551,6 @@ class _AddProduitMagasinState extends State<AddProduitMagasin> {
       SelectField(
         label: "Moyen de transport",
         icon: Icons.local_shipping_outlined,
-        isRequired: true,
         value: selectedMoyenTransport ?? "Sélectionner",
         onTap: () {
           if (moyenTransport.isEmpty) return;
@@ -570,7 +570,6 @@ class _AddProduitMagasinState extends State<AddProduitMagasin> {
       SelectField(
         label: "Unité de transport",
         icon: Icons.local_shipping_outlined,
-        isRequired: true,
         value: selectedUniteTransport ?? "Sélectionner",
         onTap: () {
           if (uniteTransport.isEmpty) return;
@@ -590,7 +589,6 @@ class _AddProduitMagasinState extends State<AddProduitMagasin> {
       _buildTextField(
         controller: prixTransportController,
         label: "Prix transport",
-        isRequired: true,
         icon: Icons.local_shipping_outlined,
         isNumber: true,
         suffix: "FCFA",
@@ -620,7 +618,7 @@ class _AddProduitMagasinState extends State<AddProduitMagasin> {
     );
   }
 
-   Widget _buildTextField({
+  Widget _buildTextField({
     required TextEditingController controller,
     required String label,
     required IconData icon,

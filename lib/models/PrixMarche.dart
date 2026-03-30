@@ -149,7 +149,7 @@ class PrixMarche {
       enqueteur: json['enqueteur'] != null
           ? Enqueteur.fromJson(json['enqueteur'])
           : null,
-       enqueteCollecte: json['enqueteCollecte'] != null
+      enqueteCollecte: json['enqueteCollecte'] != null
           ? EnqueteCollecte.fromJson(jsonDecode(json['enqueteCollecte']))
           : null,
     );
@@ -202,33 +202,33 @@ class PrixMarche {
   }
 
   Map<String, dynamic> toJson() {
-  return {
-    'variete': variete,
-    'age': age,
-    'prixUnite1': prixUnite1,
-    'prixUnite2': prixUnite2,
-    // 'prixUnite3': prixUnite3,
-    'uniteMesure2': uniteMesure2,
-    'uniteMesure3': uniteMesure3,
-    'prixTransport': prixTransport,
-    'moyenTransport': moyenTransport,
-    'image': image,
-    'fournisseur': fournisseur,
-    'qualiteProduit': qualiteProduit,
-    'clientPrincipal': clientPrincipal,
-    'uniteTransport': uniteTransport,
-    'etatRoute': etatRoute,
-    'origineProduit': origineProduit,
-    'observation': observation,
-    'dateAjout': dateAjout,
-    // Relations encodées en JSON String
-    'produit': produit != null ? jsonEncode(produit!.toJson()) : null,
-    'niveau': niveau != null ? jsonEncode(niveau!.toJson()) : null,
-    'marche': marche != null ? jsonEncode(marche!.toJson()) : null,
-    'commercant': commercant != null ? jsonEncode(commercant) : null,
-    'enqueteCollecte': enqueteCollecte != null
-        ? jsonEncode(enqueteCollecte!.toJson())
-        : null,
-  };
-}
+    return {
+      'variete': variete,
+      'age': age,
+      'prixUnite1': prixUnite1,
+      'prixUnite2': prixUnite2,
+      // 'prixUnite3': prixUnite3,
+      'uniteMesure2': uniteMesure2,
+      'uniteMesure3': uniteMesure3,
+      'prixTransport': prixTransport,
+      'moyenTransport': moyenTransport,
+      'image': image,
+      'fournisseur': fournisseur,
+      'qualiteProduit': qualiteProduit,
+      'clientPrincipal': clientPrincipal,
+      'uniteTransport': uniteTransport,
+      'commercant': commercant,
+      'etatRoute': etatRoute,
+      'origineProduit': origineProduit,
+      'observation': observation,
+      'dateAjout': dateAjout,
+      // Relations encodées en JSON String
+      'produit': produit != null ? jsonEncode(produit!.toJson()) : null,
+      'niveau': niveau != null ? jsonEncode(niveau!.toJson()) : null,
+      'marche': marche != null ? jsonEncode(marche!.toJson()) : null,
+      'enqueteCollecte': enqueteCollecte != null
+          ? jsonEncode(enqueteCollecte!.toJson())
+          : null,
+    };
+  }
 }

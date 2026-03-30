@@ -7,6 +7,7 @@ import 'package:sim_tchad/models/Acteur.dart';
 import 'package:sim_tchad/models/CategorieProduit.dart';
 import 'package:sim_tchad/models/EnqueteCollecte.dart';
 import 'package:sim_tchad/models/Enqueteur.dart';
+import 'package:sim_tchad/models/EquivalenceUnite.dart';
 import 'package:sim_tchad/models/Marche.dart';
 import 'package:sim_tchad/models/NiveauApprovisionnement.dart';
 import 'package:sim_tchad/models/PrixMarche.dart';
@@ -71,6 +72,7 @@ class _UpdatePrixMarcheState extends State<UpdatePrixMarche> {
   File? _imageFile; // Pour la nouvelle photo capturée
   String? existingImage; // Pour le chemin de l'image venant de la DB
   String? pathImageToSave;
+  List<EquivalenceUnite> equivalences = [];
 
   List<String> commercant = [
     "Commerçant 1",
@@ -149,6 +151,9 @@ class _UpdatePrixMarcheState extends State<UpdatePrixMarche> {
   void initState() {
     super.initState();
     _fetchDataLocal();
+    _prix2Controller.addListener(() {
+      calculateEquivalencePrice();
+    });
     if (widget.prixMarche != null) {
       _initData();
     }
@@ -202,16 +207,18 @@ class _UpdatePrixMarcheState extends State<UpdatePrixMarche> {
       final varieteData = await DatabaseService.getAll("Variete");
       final catData = await DatabaseService.getAll("CategorieProduit");
       final acteurs = await DatabaseService.getAll("Acteur");
+      final equiv = await DatabaseService.getAll("EquivalenceUnite");
 
       setState(() {
         niveaux = niveauxData
             .map((m) => NiveauApprovisionnement.fromJson(m))
             .toList();
         produit = produitData.map((m) => Produit.fromJson(m)).toList();
-       unites = uniteData
-    .map((m) => UniteConventionnelle.fromJson(m))
-    .where((u) => !(u.uniteStock))
-    .toList();
+        unites = uniteData
+            .map((m) => UniteConventionnelle.fromJson(m))
+            .where((u) => !(u.uniteStock))
+            .toList();
+        equivalences = equiv.map((m) => EquivalenceUnite.fromJson(m)).toList();
         acteur = acteurs.map((m) => Acteur.fromJson(m)).toList();
         variete = varieteData.map((m) => Variete.fromJson(m)).toList();
         categorieProduit =
@@ -242,7 +249,7 @@ class _UpdatePrixMarcheState extends State<UpdatePrixMarche> {
               orElse: () => p!.commercant!,
             );
           }
-
+          calculateEquivalencePrice();
           // ✅ Qualité
           selectedQualite = p!.qualiteProduit;
 
@@ -258,6 +265,42 @@ class _UpdatePrixMarcheState extends State<UpdatePrixMarche> {
     } finally {
       setState(() => isLoading = false);
     }
+  }
+
+  double? getEquivalenceValue() {
+    if (selectedProduit == null || selectedUnite1 == null) return null;
+
+    try {
+      final eq = equivalences.firstWhere(
+        (e) =>
+            e.produit!.idProduit == selectedProduit!.idProduit &&
+            e.uniteConventionnelle!.idUnite == selectedUnite1!.idUnite,
+      );
+
+      return eq.equivalenceUnite;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  void calculateEquivalencePrice() {
+    final eqValue = getEquivalenceValue();
+
+    if (eqValue == null) {
+      _prix1Controller.text = "";
+      return;
+    }
+
+    final prix = double.tryParse(_prix2Controller.text);
+
+    if (prix == null) {
+      _prix1Controller.text = "";
+      return;
+    }
+
+    final result = eqValue == 0 ? 0 : prix / eqValue;
+    print("prix convertit $result le prix $prix et equiv $eqValue");
+    _prix1Controller.text = result.toStringAsFixed(2);
   }
 
   @override
@@ -383,7 +426,6 @@ class _UpdatePrixMarcheState extends State<UpdatePrixMarche> {
       ),
       SelectField(
         label: "Variété",
-        isRequired: true,
         icon: Icons.category_outlined,
         value: selectedVariete?.libelle ?? "Sélectionner",
         onTap: () {
@@ -400,38 +442,29 @@ class _UpdatePrixMarcheState extends State<UpdatePrixMarche> {
           );
         },
       ),
-      Row(
-        children: [
-          Expanded(
-            child: SelectField(
-              label: "Qualité",
-              icon: Icons.star_outline,
-              value: selectedQualite ?? "Sélectionner",
-              onTap: () {
-                if (qualites.isEmpty) return;
-                SelectorBottomSheet.show<String>(
-                  context: context,
-                  title: "Qualité",
-                  items: qualites,
-                  itemLabel: (q) => q,
-                  selectedItem: selectedQualite,
-                  onSelected: (q) {
-                    setState(() => selectedQualite = q);
-                  },
-                );
-              },
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _buildTextField(
-                controller: ageController,
-                label: "Âge (jours)",
-                icon: Icons.history,
-                isNumber: true),
-          ),
-        ],
+      SelectField(
+        label: "Etat du produit",
+        icon: Icons.star_outline,
+        value: selectedQualite ?? "Sélectionner",
+        onTap: () {
+          if (qualites.isEmpty) return;
+          SelectorBottomSheet.show<String>(
+            context: context,
+            title: "Etat",
+            items: qualites,
+            itemLabel: (q) => q,
+            selectedItem: selectedQualite,
+            onSelected: (q) {
+              setState(() => selectedQualite = q);
+            },
+          );
+        },
       ),
+      _buildTextField(
+          controller: ageController,
+          label: "Âge (jours)",
+          icon: Icons.history,
+          isNumber: true),
     ]);
   }
 
@@ -468,7 +501,8 @@ class _UpdatePrixMarcheState extends State<UpdatePrixMarche> {
       _buildTextField(
         controller: _prix1Controller,
         isRequired: true,
-        label: "Prix en kg",
+        enabled: false,
+        label: "Equivalence en ${selectedUnite1?.conversion ?? "unité"}",
         icon: Icons.payments_outlined,
         isNumber: true,
         suffix: "FCFA",
@@ -735,27 +769,33 @@ class _UpdatePrixMarcheState extends State<UpdatePrixMarche> {
     required String label,
     required IconData icon,
     bool isNumber = false,
-    bool isRequired = false, // Nouveau paramètre
+    bool isRequired = false,
     String? suffix,
     int maxLines = 1,
+    bool enabled = true, // 👈 AJOUT ICI
   }) {
     return TextFormField(
       controller: controller,
+      enabled: enabled,
       keyboardType: isNumber ? TextInputType.number : TextInputType.text,
       maxLines: maxLines,
       decoration: InputDecoration(
-        // On crée le label avec l'astérisque si nécessaire
         label: RichText(
           text: TextSpan(
             text: label,
             style: const TextStyle(
-                color: Colors.black, fontWeight: FontWeight.bold, fontSize: 12),
+              color: Colors.black,
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+            ),
             children: [
               if (isRequired)
                 const TextSpan(
                   text: ' *',
-                  style:
-                      TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
             ],
           ),
@@ -765,8 +805,9 @@ class _UpdatePrixMarcheState extends State<UpdatePrixMarche> {
         filled: true,
         fillColor: AppColors.lightGrey.withOpacity(0.5),
         border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: BorderSide.none),
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide.none,
+        ),
         contentPadding:
             const EdgeInsets.symmetric(vertical: 12, horizontal: 15),
       ),

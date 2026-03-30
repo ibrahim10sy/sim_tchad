@@ -97,6 +97,7 @@ class _HomePageState extends State<HomePage>
       ],
       "SuiviFluxs": [
         'idSuivi',
+        'codeSuivi',
         'observation',
         'fluxEntrantTonne',
         'fluxSortantTonne',
@@ -107,7 +108,7 @@ class _HomePageState extends State<HomePage>
         'dateCollecte',
         'dateAjout',
         'produit',
-        'dateAjout',
+        'uniteMesure',
         'niveau',
         'enqueteSuivi',
         'commune'
@@ -214,12 +215,12 @@ class _HomePageState extends State<HomePage>
       [
         "prix-marches/enqueteur/$codeEnqueteur/not-validated",
         "PrixMarches",
-        "PrixMarche"
+        "PrixMarches"
       ],
       [
         "prix-magasins/enqueteur/$codeEnqueteur/not-validated",
         "PrixMagasins",
-        "PrixMagasin"
+        "PrixMagasins"
       ],
       ["suivis/enqueteur/$codeEnqueteur/pending", "SuiviFluxs", "SuiviFlux"],
       [

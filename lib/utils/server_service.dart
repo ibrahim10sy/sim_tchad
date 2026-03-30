@@ -250,6 +250,7 @@ Future<bool> syncDataSuiviByFicheServer(
         "dateCollecte": item.dateCollecte ?? null,
         "observation": item.observation ?? null,
         "dateAjout": item.dateAjout ?? null,
+        "uniteMesure": item.uniteMesure ?? null,
         "produit": {
           "idProduit": item.produit?.idProduit,
           "nomProduit": item.produit?.nomProduit,
@@ -351,15 +352,15 @@ Future<bool> syncDataMarcheByFicheServer(
 
     // 3. Construire JSON
     final data = localData.map((item) {
-      print("data ${item.toJson()}");
+      print("prix ${double.tryParse(item.prixUnite1)}");
       return {
         "variete": item.variete ?? null,
         "age": int.tryParse(item.age ?? "0"),
-        "prixUnite1": int.tryParse(item.prixUnite1 ?? "0"),
-        "prixUnite2": int.tryParse(item.prixUnite2 ?? "0"),
-        "prixUnite3": int.tryParse(item.prixUnite3 ?? "0"),
+        "prixUnite1": double.tryParse(item.prixUnite1),
+        "prixUnite2": int.tryParse(item.prixUnite2) ?? null,
+        // "prixUnite3": int.tryParse(item.prixUnite3) ?? null,
         "uniteMesure2": item.uniteMesure2 ?? null,
-        "uniteMesure3": item.uniteMesure3 ?? null,
+        // "uniteMesure3": item.uniteMesure3 ?? null,
         "prixTransport": int.tryParse(item.prixTransport ?? "0"),
         "moyenTransport": item.moyenTransport ?? null,
         "fournisseur": item.fournisseur ?? null,
@@ -375,7 +376,7 @@ Future<bool> syncDataMarcheByFicheServer(
           "idProduit": item.produit?.idProduit,
           "nomProduit": item.produit?.nomProduit,
         },
-       
+
         "niveau": item.niveau != null
             ? {
                 "idNiveauApprovisionnement":
@@ -636,30 +637,25 @@ Future<bool> syncDataAgentUpdateServer() async {
             "difficulte": item.difficulte ?? null,
             "dateCollecte": item.dateCollecte ?? null,
             "dateAjout": item.dateAjout ?? null,
-
-            // 🔥 relations (safe null)
+            "uniteMesure": item.uniteMesure ?? null,
             "produit": item.produit?.idProduit != null
                 ? {
                     "idProduit": item.produit!.idProduit,
                     "nomProduit": item.produit!.nomProduit,
                   }
                 : null,
-
             "niveau": item.niveau?.idNiveauApprovisionnement != null
                 ? {
                     "idNiveauApprovisionnement":
                         item.niveau!.idNiveauApprovisionnement,
                   }
                 : null,
-
             "enqueteur": item.enqueteur?.idEnqueteur != null
                 ? {"idEnqueteur": item.enqueteur!.idEnqueteur}
                 : null,
-
             "enqueteSuivi": item.enqueteSuivi?.numFiche != null
                 ? {"numFiche": item.enqueteSuivi!.numFiche}
                 : null,
-
             "commune": item.commune?.idCommune != null
                 ? {"idCommune": item.commune!.idCommune}
                 : null,
@@ -743,9 +739,9 @@ Future<bool> syncDataUpdateServer() async {
             "codePrix": item.codePrix,
             "variete": item.variete,
             "age": int.tryParse(item.age ?? "0"),
-            "prixUnite1": int.tryParse(item.prixUnite1 ?? "0"),
-            "prixUnite2": int.tryParse(item.prixUnite2 ?? "0"),
-            "prixUnite3": int.tryParse(item.prixUnite3 ?? "0"),
+            "prixUnite1": double.tryParse(item.prixUnite1),
+            "prixUnite2": int.tryParse(item.prixUnite2) ?? null,
+            // "prixUnite3": int.tryParse(item.prixUnite3 ?? "0"),
             "uniteMesure2": item.uniteMesure2,
             "uniteMesure3": item.uniteMesure3,
             "prixTransport": int.tryParse(item.prixTransport ?? "0"),
@@ -757,14 +753,12 @@ Future<bool> syncDataUpdateServer() async {
             "origineProduit": item.origineProduit,
             "observation": item.observation,
             "dateAjout": item.dateAjout,
-            "commercant": item.commercant,
+            "commercant": item.commercant ?? null,
 
             // 🔥 relations (safe null)
             "produit": item.produit?.idProduit != null
                 ? {"idProduit": item.produit!.idProduit}
                 : null,
-
-            
 
             "niveau": item.niveau?.idNiveauApprovisionnement != null
                 ? {

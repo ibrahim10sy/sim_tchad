@@ -16,7 +16,37 @@ class AuthService {
 
   static String baseUrl = AppConstants.baseUrl;
 
-  /// Méthode principale de login
+  
+
+static Future<bool> resetPassword(String codeEnqueteur, String newPassword) async {
+  try {
+    // Utilisation de query parameters comme dans ton code React
+    final response = await http.put(
+      Uri.parse("${baseUrl}enqueteurs/$codeEnqueteur/password?password=$newPassword"),
+      headers: {"Content-Type": "application/json"},
+    );
+
+    if (response.statusCode == 200) {
+      final prefs = await SharedPreferences.getInstance();
+      
+      // Mettre à jour les identifiants locaux pour le prochain login offline
+      await prefs.setString(
+        "userLogin",
+        jsonEncode({"codeEnqueteur": codeEnqueteur, "password": newPassword}),
+      );
+      
+      // Marquer localement que c'est fait
+      await prefs.setBool("firstLoginDone", true);
+      return true;
+    }
+    return false;
+  } catch (e) {
+    print("Erreur resetPassword: $e");
+    return false;
+  }
+}
+
+/// Méthode principale de login
   static Future<void> loginUser(BuildContext context, String code, String password) async {
     print("loginUser called >>>");
 
@@ -50,34 +80,6 @@ class AuthService {
       );
     }
   }
-
-static Future<bool> resetPassword(String codeEnqueteur, String newPassword) async {
-  try {
-    // Utilisation de query parameters comme dans ton code React
-    final response = await http.put(
-      Uri.parse("${baseUrl}enqueteurs/$codeEnqueteur/password?password=$newPassword"),
-      headers: {"Content-Type": "application/json"},
-    );
-
-    if (response.statusCode == 200) {
-      final prefs = await SharedPreferences.getInstance();
-      
-      // Mettre à jour les identifiants locaux pour le prochain login offline
-      await prefs.setString(
-        "userLogin",
-        jsonEncode({"codeEnqueteur": codeEnqueteur, "password": newPassword}),
-      );
-      
-      // Marquer localement que c'est fait
-      await prefs.setBool("firstLoginDone", true);
-      return true;
-    }
-    return false;
-  } catch (e) {
-    print("Erreur resetPassword: $e");
-    return false;
-  }
-}
 
  static Future<bool> login(String codeEnqueteur, String password) async {
     try {

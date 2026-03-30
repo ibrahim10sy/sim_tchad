@@ -33,16 +33,6 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   
-
-  /// Vérifie si c'est la première connexion
-  // Future<void> checkFirstLogin() async {
-  //   bool result = await AuthService.isFirstLogin();
-
-  //   setState(() {
-  //     isFirstLogin = result;
-  //   });
-  // }
-
  Future<void> init() async {
     await checkFirstLogin();
     await loadSavedUser();

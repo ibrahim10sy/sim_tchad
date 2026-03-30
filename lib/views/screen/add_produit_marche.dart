@@ -82,7 +82,12 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
   String? pathImageToSave;
 
   // Listes de constantes (provenant de ton code)
-  List<String> commercant = ["Commerçant 1", "Commerçant 2", "Commerçant 3", "Commerçant 4"];
+  List<String> commercant = [
+    "Commerçant 1",
+    "Commerçant 2",
+    "Commerçant 3",
+    "Commerçant 4"
+  ];
   List<String> moyenTransport = ["Moto", "Tricycle", "Camion", "Pick-up"];
   List<String> uniteTransport = ["Sac", "Carton", "Caisse", "Panier", "Bac"];
   List<String> qualites = ["Bon", "Très bon", "Moyen", "Mauvais"];
@@ -153,6 +158,12 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
   void initState() {
     super.initState();
     _fetchDataLocal();
+
+    // 👇 ECOUTER les changements du prix
+    _prix2Controller.addListener(() {
+      calculateEquivalencePrice();
+    });
+
     if (widget.isEdit == true && widget.prixMarche != null) {
       _initData();
     }
@@ -215,16 +226,15 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
             .map((m) => NiveauApprovisionnement.fromJson(m))
             .toList();
         produit = produitData.map((m) => Produit.fromJson(m)).toList();
-       unites = uniteData
-    .map((m) => UniteConventionnelle.fromJson(m))
-    .where((u) => !(u.uniteStock))
-    .toList();
+        unites = uniteData
+            .map((m) => UniteConventionnelle.fromJson(m))
+            .where((u) => !(u.uniteStock))
+            .toList();
         acteur = acteurs.map((m) => Acteur.fromJson(m)).toList();
         variete = varieteData.map((m) => Variete.fromJson(m)).toList();
         categorieProduit =
             catData.map((m) => CategorieProduit.fromJson(m)).toList();
-        equivalences =
-            equiv.map((m) => EquivalenceUnite.fromJson(m)).toList();
+        equivalences = equiv.map((m) => EquivalenceUnite.fromJson(m)).toList();
       });
 
       // 🔥 IMPORTANT : RECONSTRUCTION DES SELECTED
@@ -245,6 +255,7 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
               orElse: () => UniteConventionnelle(libelle: p!.uniteMesure2),
             );
           }
+          calculateEquivalencePrice();
           // if (p!.uniteMesure3 != null) {
           //   selectedUnite2 = unites.firstWhere(
           //     (u) => u.libelle == p!.uniteMesure3,
@@ -269,6 +280,42 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
     }
   }
 
+  double? getEquivalenceValue() {
+    if (selectedProduit == null || selectedUnite1 == null) return null;
+
+    try {
+      final eq = equivalences.firstWhere(
+        (e) =>
+            e.produit!.idProduit == selectedProduit!.idProduit &&
+            e.uniteConventionnelle!.idUnite == selectedUnite1!.idUnite,
+      );
+
+      return eq.equivalenceUnite;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  void calculateEquivalencePrice() {
+    final eqValue = getEquivalenceValue();
+
+    if (eqValue == null) {
+      _prix1Controller.text = "";
+      return;
+    }
+
+    final prix = double.tryParse(_prix2Controller.text);
+
+    if (prix == null) {
+      _prix1Controller.text = "";
+      return;
+    }
+
+    final result = eqValue == 0 ? 0 : prix / eqValue;
+    print("prix convertit $result le prix $prix et equiv $eqValue");
+    _prix1Controller.text = result.toStringAsFixed(2);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -276,10 +323,11 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
       appBar: AppBar(
         title: widget.isEdit == true
             ? Text("Modification",
-                style: const TextStyle(fontWeight: FontWeight.bold,fontSize: 16))
+                style:
+                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 14))
             : Text(widget.marche!.nomMarche,
                 style:
-                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
         backgroundColor: AppColors.institutionalGreen,
         foregroundColor: Colors.white,
         elevation: 0,
@@ -380,7 +428,6 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
           );
         },
       ),
-      
       SelectField(
         label: "Produit",
         isRequired: true,
@@ -392,7 +439,10 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
           items: filteredProduits,
           itemLabel: (p) => p!.nomProduit ?? "",
           selectedItem: selectedProduit,
-          onSelected: (p) => setState(() => selectedProduit = p),
+          onSelected: (p) {
+            setState(() => selectedProduit = p);
+            calculateEquivalencePrice(); // Recalculer le prix à l'unité kg lors du changement de produit
+          },
         ),
       ),
       SelectField(
@@ -458,10 +508,10 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
               selectedUnite1 = u;
               selectedUniteMesure = u.libelle;
             });
+            calculateEquivalencePrice();
           },
         ),
       ),
-
       _buildTextField(
         controller: _prix2Controller,
         isRequired: true,
@@ -473,47 +523,12 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
       _buildTextField(
         controller: _prix1Controller,
         isRequired: true,
-        label: "Equivalence en kg",
+        enabled: false,
+        label: "Equivalence en ${selectedUnite1?.conversion ?? "unité"}",
         icon: Icons.payments_outlined,
         isNumber: true,
         suffix: "FCFA",
       ),
-      // Row(
-      //   children: [
-      //     Expanded(
-      //       child: SelectField(
-      //         label: "Unité de mesure 2",
-      //         icon: Icons.straighten,
-      //         value: selectedUnite2?.libelle ?? "Sélectionner",
-      //         onTap: () => SelectorBottomSheet.show<Unite>(
-      //           context: context,
-      //           title: "Unités",
-      //           items: unites,
-      //           itemLabel: (u) => u.libelle ?? "",
-      //           selectedItem: selectedUnite2,
-      //           onSelected: (u) {
-      //             setState(() {
-      //               selectedUnite2 = u;
-      //               selectedUniteMesure2 = u.libelle;
-      //             });
-      //           },
-      //         ),
-      //       ),
-      //     ),
-      //     SizedBox(
-      //       width: 10,
-      //     ),
-      //     Expanded(
-      //       child: _buildTextField(
-      //         controller: _prix3Controller,
-      //         label: "Prix unite 2",
-      //         icon: Icons.agriculture,
-      //         isNumber: true,
-      //         suffix: "FCFA",
-      //       ),
-      //     ),
-      //   ],
-      // ),
     ]);
   }
 
@@ -776,27 +791,33 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
     required String label,
     required IconData icon,
     bool isNumber = false,
-    bool isRequired = false, // Nouveau paramètre
+    bool isRequired = false,
     String? suffix,
     int maxLines = 1,
+    bool enabled = true, // 👈 AJOUT ICI
   }) {
     return TextFormField(
       controller: controller,
+      enabled: enabled,
       keyboardType: isNumber ? TextInputType.number : TextInputType.text,
       maxLines: maxLines,
       decoration: InputDecoration(
-        // On crée le label avec l'astérisque si nécessaire
         label: RichText(
           text: TextSpan(
             text: label,
             style: const TextStyle(
-                color: Colors.black, fontWeight: FontWeight.bold, fontSize: 12),
+              color: Colors.black,
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+            ),
             children: [
               if (isRequired)
                 const TextSpan(
                   text: ' *',
-                  style:
-                      TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
             ],
           ),
@@ -806,13 +827,57 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
         filled: true,
         fillColor: AppColors.lightGrey.withOpacity(0.5),
         border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: BorderSide.none),
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide.none,
+        ),
         contentPadding:
             const EdgeInsets.symmetric(vertical: 12, horizontal: 15),
       ),
     );
   }
+
+  // Widget _buildTextField({
+  //   required TextEditingController controller,
+  //   required String label,
+  //   required IconData icon,
+  //   bool isNumber = false,
+  //   bool isRequired = false, // Nouveau paramètre
+  //   String? suffix,
+  //   int maxLines = 1,
+  // }) {
+  //   return TextFormField(
+  //     controller: controller,
+  //     keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+  //     maxLines: maxLines,
+  //     decoration: InputDecoration(
+  //       // On crée le label avec l'astérisque si nécessaire
+  //       label: RichText(
+  //         text: TextSpan(
+  //           text: label,
+  //           style: const TextStyle(
+  //               color: Colors.black, fontWeight: FontWeight.bold, fontSize: 12),
+  //           children: [
+  //             if (isRequired)
+  //               const TextSpan(
+  //                 text: ' *',
+  //                 style:
+  //                     TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+  //               ),
+  //           ],
+  //         ),
+  //       ),
+  //       prefixIcon: Icon(icon, color: AppColors.primaryGreen, size: 20),
+  //       suffixText: suffix,
+  //       filled: true,
+  //       fillColor: AppColors.lightGrey.withOpacity(0.5),
+  //       border: OutlineInputBorder(
+  //           borderRadius: BorderRadius.circular(10),
+  //           borderSide: BorderSide.none),
+  //       contentPadding:
+  //           const EdgeInsets.symmetric(vertical: 12, horizontal: 15),
+  //     ),
+  //   );
+  // }
 
   Widget _buildDropdown<T>({
     required String label,
@@ -904,8 +969,8 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
         selectedFournisseur == null ||
         selectedUnite1 == null ||
         widget.enqueteCollecte == null ||
-        _prix1Controller.text.isEmpty ||
-        _prix2Controller.text.isEmpty) {
+        _prix1Controller == null ||
+        _prix2Controller == null) {
       print("${selectedUniteMesure}");
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -926,8 +991,10 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
     }
 
     try {
+      calculateEquivalencePrice();
+      print("prix m  ${_prix1Controller.text}");
       final data = PrixMarche(
-        variete: selectedVariete!.libelle ?? "",
+        variete: selectedVariete?.libelle ?? "",
         prixUnite1: safeText(_prix1Controller)!,
         prixUnite2: safeText(_prix2Controller)!,
         // prixUnite3: safeText(_prix3Controller) ?? "",
@@ -959,9 +1026,10 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
           "idPrixMarche",
           p!.idPrixMarche,
         );
+        print("data ${data.prixUnite1}");
       } else {
         await DatabaseService.insert("PrixMarche", data.toJson());
-        print("data ${data.toJson()}");
+        print("data ${data.prixUnite1}");
       }
 
       ScaffoldMessenger.of(context).showSnackBar(

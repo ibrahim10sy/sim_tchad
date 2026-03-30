@@ -302,7 +302,7 @@ Future<Database> openDatabaseConnection() async {
   CREATE TABLE IF NOT EXISTS UniteConventionnelle(
     idUnite INTEGER PRIMARY KEY,
     libelle TEXT,
-    sigle TEXT
+    sigle TEXT,
     conversion TEXT,
     uniteStock INTEGER
   )
@@ -329,6 +329,7 @@ Future<Database> openDatabaseConnection() async {
           dateCollecte TEXT NOT NULL,
           dateAjout,
           produit TEXT,
+          uniteMesure TEXT,
           niveau TEXT,
           enqueteur TEXT,
           enqueteSuivi TEXT,
@@ -348,6 +349,7 @@ Future<Database> openDatabaseConnection() async {
           dateCollecte TEXT NOT NULL,
           dateAjout,
           produit TEXT,
+          uniteMesure TEXT,
           niveau TEXT,
           enqueteur TEXT,
           enqueteSuivi TEXT,

@@ -7,6 +7,7 @@ import 'package:sim_tchad/models/Enqueteur.dart';
 import 'package:sim_tchad/models/NiveauApprovisionnement.dart';
 import 'package:sim_tchad/models/Produit.dart';
 import 'package:sim_tchad/models/SuiviFlux.dart';
+import 'package:sim_tchad/models/UniteConventionnelle.dart';
 import 'package:sim_tchad/services/auth_service.dart';
 import 'package:sim_tchad/utils/database_service.dart';
 import 'package:sim_tchad/views/widgets/buildSelectField.dart';
@@ -46,15 +47,18 @@ class _AddSuiviState extends State<AddSuivi> {
     "Très faible"
   ];
   SuiviFlux? p;
+  String? selectedUniteMesure;
   List<NiveauApprovisionnement> niveaux = [];
   List<Produit> produit = [];
   List<CategorieProduit> categorieProduit = [];
+  List<UniteConventionnelle> unites = [];
   CategorieProduit? selectedCategorie;
   Produit? selectedProduit;
   NiveauApprovisionnement? selectedNiveau;
   String? disponibilte;
   String? difficulte;
   Enqueteur? enqueteur;
+  UniteConventionnelle? selectedUnite;
   // String? selectedDiff;
   // String? selectedDispo;
 
@@ -79,7 +83,7 @@ class _AddSuiviState extends State<AddSuivi> {
       fluxEntrantTonneCont.text = p!.fluxEntrantTonne.toString() ?? "";
       fluxSortantTonneCont.text = p!.fluxSortantTonne.toString() ?? "";
       observationController.text = p!.observation ?? "";
-
+      selectedUniteMesure = p!.uniteMesure;
       selectedProduit = p!.produit;
       selectedNiveau = p!.niveau;
       selectedCategorie = p!.produit?.categorieProduit;
@@ -108,14 +112,31 @@ class _AddSuiviState extends State<AddSuivi> {
       final produitData = await DatabaseService.getAll("Produit");
 
       final catData = await DatabaseService.getAll("CategorieProduit");
+      final uniteData = await DatabaseService.getAll("UniteConventionnelle");
 
       setState(() {
         niveaux = niveauxData
             .map((m) => NiveauApprovisionnement.fromJson(m))
             .toList();
+        unites = uniteData
+            .map((m) => UniteConventionnelle.fromJson(m))
+            .where((u) => !(u.uniteStock))
+            .toList();
         produit = produitData.map((m) => Produit.fromJson(m)).toList();
         categorieProduit =
             catData.map((m) => CategorieProduit.fromJson(m)).toList();
+
+        if (widget.isEdit == true && p != null) {
+          setState(() {
+            // ✅ Unité
+            if (p!.uniteMesure != null) {
+              selectedUnite = unites.firstWhere(
+                (u) => u.libelle == p!.uniteMesure,
+                orElse: () => UniteConventionnelle(libelle: p!.uniteMesure),
+              );
+            }
+          });
+        }
       });
     } finally {
       setState(() => isLoading = false);
@@ -131,6 +152,7 @@ class _AddSuiviState extends State<AddSuivi> {
     if (selectedProduit == null ||
         enqueteur!.commune == null ||
         fluxEntrantTonneCont == null ||
+        selectedUniteMesure == null ||
         fluxSortantTonneCont == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -150,6 +172,7 @@ class _AddSuiviState extends State<AddSuivi> {
         commune: enqueteur!.commune ?? null,
         niveau: selectedNiveau ?? null,
         difficulte: difficulte ?? "",
+        uniteMesure: selectedUniteMesure!,
         disponibilite: disponibilte ?? "",
         enqueteSuivi: widget.enqueteSuivi ?? null,
         enqueteur: enqueteur,
@@ -360,7 +383,25 @@ class _AddSuiviState extends State<AddSuivi> {
         ),
       ),
 
-      const SizedBox(height: 10),
+      SelectField(
+        label: "Unité de mesure",
+        isRequired: true,
+        icon: Icons.straighten,
+        value: selectedUnite?.libelle ?? "Sélectionner",
+        onTap: () => SelectorBottomSheet.show<UniteConventionnelle>(
+          context: context,
+          title: "Unités",
+          items: unites,
+          itemLabel: (u) => u.libelle ?? "",
+          selectedItem: selectedUnite,
+          onSelected: (u) {
+            setState(() {
+              selectedUnite = u;
+              selectedUniteMesure = u.libelle;
+            });
+          },
+        ),
+      ),
 
       /// Flux
       _buildTextField(
@@ -369,7 +410,6 @@ class _AddSuiviState extends State<AddSuivi> {
         label: "Flux entrant (tonne)",
         icon: Icons.call_received,
         isNumber: true,
-        suffix: "T",
       ),
 
       _buildTextField(
@@ -378,23 +418,11 @@ class _AddSuiviState extends State<AddSuivi> {
         isRequired: true,
         icon: Icons.call_made,
         isNumber: true,
-        suffix: "T",
       ),
-
-      const SizedBox(height: 10),
 
       /// Disponibilité & difficulté
-      Row(
-        children: [
-          Expanded(
-            child: _buildDisponibiliteField(),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _buildDifficulteField(),
-          ),
-        ],
-      ),
+      _buildDisponibiliteField(),
+      _buildDifficulteField(),
     ]);
   }
 
@@ -470,7 +498,7 @@ class _AddSuiviState extends State<AddSuivi> {
     );
   }
 
-   Widget _buildTextField({
+  Widget _buildTextField({
     required TextEditingController controller,
     required String label,
     required IconData icon,

@@ -153,11 +153,10 @@ class _RejetPageState extends State<RejetPage> {
     }
   }
 
-  Future<void> handleSyncData(BuildContext context) async {
+  Future<void> handleSyncData() async {
     setState(() => isSyncing = true);
 
     try {
-      // On lance les 3 processus simultanément
       await Future.wait([
         syncData(
           label: "Marché",
@@ -182,25 +181,30 @@ class _RejetPageState extends State<RejetPage> {
         ),
       ]);
 
-      // Une fois que tout est fini, on rafraîchit le local une seule fois
       await _fetchDataLocal();
-      if (mounted)
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("🚀 Synchronisation globale réussie !"),
-            backgroundColor: AppColors.institutionalGreen,
-          ),
-        );
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Synchronisation globale réussie !"),
+          backgroundColor: AppColors.institutionalGreen,
+        ),
+      );
     } catch (error) {
       print("Erreur globale de synchronisation : $error");
-      // if (mounted)
-      //   ScaffoldMessenger.of(context).showSnackBar(
-      //     SnackBar(
-      //         content: Text("Échec de la synchronisation : $error"),
-      //         backgroundColor: Colors.red),
-      //   );
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Échec de la synchronisation : $error"),
+        ),
+      );
     } finally {
-      setState(() => isSyncing = false);
+      if (mounted) {
+        setState(() => isSyncing = false);
+      }
     }
   }
 
@@ -371,7 +375,7 @@ class _RejetPageState extends State<RejetPage> {
             ElevatedButton(
               onPressed: () {
                 Navigator.of(context).pop(); // Ferme le dialogue
-                handleSyncData(context); // Lance la sync
+                handleSyncData(); // Lance la sync
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.institutionalGreen,
@@ -446,7 +450,7 @@ class _RejetPageState extends State<RejetPage> {
         padding: const EdgeInsets.only(bottom: 3),
         child: ProduitCollecteCard(
           libelle: "Suivi flux",
-         localite: fiche.enqueteur?.commune?.nom ?? "N/A",
+          localite: fiche.enqueteur?.commune?.nom ?? "N/A",
           onEdit: () => _getResultFromNextScreensSuivi(
               context, fiche.enqueteSuivi!, fiche),
           onDelete: () => _showDeleteConfirmSuivi(fiche.idSuivi!),

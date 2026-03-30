@@ -37,7 +37,9 @@ class UniteConventionnelle {
       description: json['description'],
       dateAjout: json['dateAjout'],
       dateModif: json['dateModif'],
-      uniteStock: json['uniteStock'] == true || json['uniteStock'] == 1,
+      uniteStock: json['uniteStock'] == true ||
+          json['uniteStock'] == 1 ||
+          json['uniteStock'] == "1",
       statut: json['statut'] == true || json['statut'] == 1,
     );
   }

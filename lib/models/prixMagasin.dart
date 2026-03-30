@@ -7,8 +7,6 @@ import 'package:sim_tchad/models/Magasin.dart';
 import 'package:sim_tchad/models/NiveauApprovisionnement.dart';
 import 'package:sim_tchad/models/Produit.dart';
 
-
-
 class PrixMagasin {
   int? idPrixMagasin;
   String? codePrix;
@@ -39,16 +37,16 @@ class PrixMagasin {
     this.idPrixMagasin,
     this.codePrix,
     this.image,
-     this.uniteMesure,
-     this.prixBordChamp,
-     this.stockDisponible,
+    this.uniteMesure,
+    this.prixBordChamp,
+    this.stockDisponible,
     this.variete,
     this.age,
-     this.prixTransport,
+    this.prixTransport,
     this.uniteTransport,
     this.moyenTransport,
-     this.prixVente,
-     this.observation,
+    this.prixVente,
+    this.observation,
     this.statut,
     this.dateAjout,
     this.qualiteProduit,
@@ -108,7 +106,7 @@ class PrixMagasin {
       uniteTransport: map['uniteTransport'] ?? '',
       moyenTransport: map['moyenTransport'] ?? '',
       prixVente: map['prixVente'] ?? '',
-     observation: map['observation'] ?? '',
+      observation: map['observation'] ?? '',
       statut: map['statut'] ?? '',
       dateAjout: map['dateAjout'] ?? '',
       qualiteProduit: map['qualiteProduit'] ?? '',
@@ -179,7 +177,7 @@ class PrixMagasin {
       'uniteMesure': uniteMesure,
       'prixBordChamp': prixBordChamp,
       'stockDisponible': stockDisponible,
-      'variete': variete,
+      'variete': variete ?? null,
       'prixTransport': prixTransport,
       'prixVente': prixVente,
       'observation': observation,

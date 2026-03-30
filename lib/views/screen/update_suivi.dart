@@ -6,6 +6,7 @@ import 'package:sim_tchad/models/EnqueteSuivi.dart';
 import 'package:sim_tchad/models/NiveauApprovisionnement.dart';
 import 'package:sim_tchad/models/Produit.dart';
 import 'package:sim_tchad/models/SuiviFlux.dart';
+import 'package:sim_tchad/models/UniteConventionnelle.dart';
 import 'package:sim_tchad/utils/database_service.dart';
 import 'package:sim_tchad/views/widgets/buildSelectField.dart';
 import 'package:sim_tchad/views/widgets/showCustomSelector.dart';
@@ -41,6 +42,7 @@ class _UpdateSuiviState extends State<UpdateSuivi> {
     "Faible",
     "Très faible"
   ];
+  List<UniteConventionnelle> unites = [];
   SuiviFlux? p;
   List<NiveauApprovisionnement> niveaux = [];
   List<Produit> produit = [];
@@ -50,6 +52,8 @@ class _UpdateSuiviState extends State<UpdateSuivi> {
   NiveauApprovisionnement? selectedNiveau;
   String? disponibilte;
   String? difficulte;
+  String? selectedUniteMesure;
+  UniteConventionnelle? selectedUnite;
   // String? selectedDiff;
   // String? selectedDispo;
 
@@ -72,7 +76,7 @@ class _UpdateSuiviState extends State<UpdateSuivi> {
       fluxEntrantTonneCont.text = p!.fluxEntrantTonne.toString() ?? "";
       fluxSortantTonneCont.text = p!.fluxSortantTonne.toString() ?? "";
       observationController.text = p!.observation ?? "";
-
+      selectedUniteMesure = p!.uniteMesure;
       selectedProduit = p!.produit;
       selectedNiveau = p!.niveau;
       selectedCategorie = p!.produit?.categorieProduit;
@@ -92,15 +96,28 @@ class _UpdateSuiviState extends State<UpdateSuivi> {
           await DatabaseService.getAll("NiveauApprovisionnement");
       final produitData = await DatabaseService.getAll("Produit");
 
+      final uniteData = await DatabaseService.getAll("UniteConventionnelle");
+
       final catData = await DatabaseService.getAll("CategorieProduit");
 
       setState(() {
         niveaux = niveauxData
             .map((m) => NiveauApprovisionnement.fromJson(m))
             .toList();
+        unites = uniteData
+            .map((m) => UniteConventionnelle.fromJson(m))
+            .where((u) => !(u.uniteStock))
+            .toList();
         produit = produitData.map((m) => Produit.fromJson(m)).toList();
         categorieProduit =
             catData.map((m) => CategorieProduit.fromJson(m)).toList();
+
+        if (p!.uniteMesure != null) {
+          selectedUnite = unites.firstWhere(
+            (u) => u.libelle == p!.uniteMesure,
+            orElse: () => UniteConventionnelle(libelle: p!.uniteMesure),
+          );
+        }
       });
     } finally {
       setState(() => isLoading = false);
@@ -164,7 +181,7 @@ class _UpdateSuiviState extends State<UpdateSuivi> {
       backgroundColor: AppColors.lightGrey,
       appBar: AppBar(
         title: Text("Modification",
-            style: const TextStyle(fontWeight: FontWeight.bold,fontSize: 16)),
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
         backgroundColor: AppColors.institutionalGreen,
         foregroundColor: Colors.white,
         elevation: 0,
@@ -325,7 +342,25 @@ class _UpdateSuiviState extends State<UpdateSuivi> {
         ),
       ),
 
-      const SizedBox(height: 10),
+      SelectField(
+        label: "Unité de mesure",
+        isRequired: true,
+        icon: Icons.straighten,
+        value: selectedUnite?.libelle ?? "Sélectionner",
+        onTap: () => SelectorBottomSheet.show<UniteConventionnelle>(
+          context: context,
+          title: "Unités",
+          items: unites,
+          itemLabel: (u) => u.libelle ?? "",
+          selectedItem: selectedUnite,
+          onSelected: (u) {
+            setState(() {
+              selectedUnite = u;
+              selectedUniteMesure = u.libelle;
+            });
+          },
+        ),
+      ),
 
       /// Flux
       _buildTextField(
@@ -334,7 +369,6 @@ class _UpdateSuiviState extends State<UpdateSuivi> {
         icon: Icons.call_received,
         isRequired: true,
         isNumber: true,
-        suffix: "T",
       ),
 
       _buildTextField(
@@ -343,23 +377,11 @@ class _UpdateSuiviState extends State<UpdateSuivi> {
         icon: Icons.call_made,
         isRequired: true,
         isNumber: true,
-        suffix: "T",
       ),
-
-      const SizedBox(height: 10),
 
       /// Disponibilité & difficulté
-      Row(
-        children: [
-          Expanded(
-            child: _buildDisponibiliteField(),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _buildDifficulteField(),
-          ),
-        ],
-      ),
+      _buildDisponibiliteField(),
+      _buildDifficulteField(),
     ]);
   }
 
@@ -435,7 +457,7 @@ class _UpdateSuiviState extends State<UpdateSuivi> {
     );
   }
 
-   Widget _buildTextField({
+  Widget _buildTextField({
     required TextEditingController controller,
     required String label,
     required IconData icon,

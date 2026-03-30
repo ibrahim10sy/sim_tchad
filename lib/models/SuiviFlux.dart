@@ -15,6 +15,7 @@ class SuiviFlux {
   String disponibilite;
   String difficulte;
   String dateCollecte;
+  String? uniteMesure;
   String dateAjout;
   String? dateModif;
   String? statut;
@@ -36,6 +37,7 @@ class SuiviFlux {
     required this.difficulte,
     required this.dateCollecte,
     required this.dateAjout,
+    this.uniteMesure,
     this.dateModif,
     this.statut,
     this.latitude,
@@ -63,6 +65,7 @@ class SuiviFlux {
       statut: json['statut'],
       latitude: json['latitude'],
       longitude: json['longitude'],
+       uniteMesure: json['uniteMesure'] ?? '',
       produit:
           json['produit'] != null ? Produit.fromJson(json['produit']) : null,
       niveau: json['niveau'] != null
@@ -82,6 +85,7 @@ class SuiviFlux {
   /// Conversion vers JSON
   Map<String, dynamic> toJson() {
     return {
+      'uniteMesure': uniteMesure,
       'observation': observation,
       'fluxEntrantTonne': fluxEntrantTonne,
       'fluxSortantTonne': fluxSortantTonne,
@@ -112,9 +116,11 @@ class SuiviFlux {
       'dateCollecte': dateCollecte,
       'dateAjout': dateAjout,
       'dateModif': dateModif,
+      'uniteMesure': uniteMesure,
       'statut': statut,
       'latitude': latitude,
       'longitude': longitude,
+       'uniteMesure': uniteMesure,
       'produit': produit != null ? jsonEncode(produit!.toJson()) : null,
       'niveau': niveau != null ? jsonEncode(niveau!.toJson()) : null,
       'enqueteur': enqueteur != null ? jsonEncode(enqueteur!.toJson()) : null,
@@ -140,6 +146,7 @@ class SuiviFlux {
       statut: map['statut'],
       latitude: map['latitude'],
       longitude: map['longitude'],
+       uniteMesure: map['uniteMesure'] ?? '',
       produit: map['produit'] != null
           ? Produit.fromJson(jsonDecode(map['produit']))
           : null,

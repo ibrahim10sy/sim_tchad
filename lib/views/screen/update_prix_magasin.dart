@@ -18,21 +18,24 @@ import 'package:sim_tchad/views/widgets/showCustomSelector.dart';
 import 'package:image_picker/image_picker.dart';
 
 class UpdatePrixMagasin extends StatefulWidget {
-   Magasin? magasin;
+  Magasin? magasin;
   Enqueteur? enqueteur;
   EnqueteMagasin? enqueteMagasin;
   PrixMagasin? prixMagasin;
-   UpdatePrixMagasin({super.key,  this.enqueteur,
-      this.magasin,
-      this.enqueteMagasin,
-      this.prixMagasin,});
+  UpdatePrixMagasin({
+    super.key,
+    this.enqueteur,
+    this.magasin,
+    this.enqueteMagasin,
+    this.prixMagasin,
+  });
 
   @override
   State<UpdatePrixMagasin> createState() => _UpdatePrixMagasinState();
 }
 
 class _UpdatePrixMagasinState extends State<UpdatePrixMagasin> {
-   final TextEditingController prixVenteController = TextEditingController();
+  final TextEditingController prixVenteController = TextEditingController();
   final TextEditingController prixTransportController = TextEditingController();
   final TextEditingController ageController = TextEditingController();
   final TextEditingController moyenController = TextEditingController();
@@ -160,7 +163,7 @@ class _UpdatePrixMagasinState extends State<UpdatePrixMagasin> {
           await DatabaseService.getAll("NiveauApprovisionnement");
       final produitData = await DatabaseService.getAll("Produit");
       final bassinData = await DatabaseService.getAll("BassinProduction");
-      final uniteData = await DatabaseService.getAll("Unite");
+      final uniteData = await DatabaseService.getAll("UniteConventionnelle");
       final varieteData = await DatabaseService.getAll("Variete");
       final catData = await DatabaseService.getAll("CategorieProduit");
 
@@ -173,9 +176,9 @@ class _UpdatePrixMagasinState extends State<UpdatePrixMagasin> {
         print("${bassins.length}");
         produit = produitData.map((m) => Produit.fromJson(m)).toList();
         unites = uniteData
-    .map((m) => UniteConventionnelle.fromJson(m))
-    .where((u) => (u.uniteStock))
-    .toList();
+            .map((m) => UniteConventionnelle.fromJson(m))
+            .where((u) => !(u.uniteStock))
+            .toList();
         variete = varieteData.map((m) => Variete.fromJson(m)).toList();
         categorieProduit =
             catData.map((m) => CategorieProduit.fromJson(m)).toList();
@@ -227,11 +230,9 @@ class _UpdatePrixMagasinState extends State<UpdatePrixMagasin> {
         selectedProduit == null ||
         selectedBassin == null ||
         stockController == null ||
-        selectedVariete == null ||
         prixVenteController == null ||
         prixBordChampController == null ||
-        prixBordChampController == null ||
-        selectedNiveau == null) {
+        prixBordChampController == null) {
       return;
     }
 
@@ -251,15 +252,15 @@ class _UpdatePrixMagasinState extends State<UpdatePrixMagasin> {
           uniteMesure: selectedUniteMesure!,
           prixBordChamp: safeText(prixBordChampController)!,
           stockDisponible: safeText(stockController)!,
-          variete: selectedVariete!.libelle ?? "",
+          variete: selectedVariete?.libelle ?? "",
           age: safeText(ageController) ?? "",
           prixTransport: safeText(prixTransportController) ?? "",
-          prixVente: safeText(prixVenteController) ?? "",
+          prixVente: safeText(prixVenteController)!,
           observation: safeText(observationController) ?? "",
           bassinProduction: selectedBassin,
           magasin: widget.magasin,
           produit: selectedProduit,
-          niveau: selectedNiveau,
+          niveau: selectedNiveau ?? null,
           qualiteProduit: selectedQualite ?? "",
           uniteTransport: selectedUniteTransport ?? "",
           moyenTransport: selectedMoyenTransport ?? "",
@@ -267,17 +268,16 @@ class _UpdatePrixMagasinState extends State<UpdatePrixMagasin> {
           dateAjout: DateTime.now().toString(),
           image: pathImageToSave);
 
-        await DatabaseService.update(
-          "PrixMagasins",
-          data.toJson(),
-          "idPrixMagasin",
-          p!.idPrixMagasin,
-        );
+      await DatabaseService.update(
+        "PrixMagasins",
+        data.toJson(),
+        "idPrixMagasin",
+        p!.idPrixMagasin,
+      );
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("Produit modifié avec succès"
-              ),
+          content: Text("Produit modifié avec succès"),
         ),
       );
 
@@ -297,9 +297,8 @@ class _UpdatePrixMagasinState extends State<UpdatePrixMagasin> {
     return Scaffold(
       backgroundColor: AppColors.lightGrey,
       appBar: AppBar(
-        title:  Text("Modification",
-                style: const TextStyle(fontWeight: FontWeight.bold ,fontSize: 16))
-            ,
+        title: Text("Modification",
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
         backgroundColor: AppColors.institutionalGreen,
         foregroundColor: Colors.white,
         elevation: 0,
@@ -409,7 +408,6 @@ class _UpdatePrixMagasinState extends State<UpdatePrixMagasin> {
       SelectField(
         label: "Variété",
         icon: Icons.category_outlined,
-        isRequired: true,
         value: selectedVariete?.libelle ?? "Sélectionner",
         onTap: () {
           if (variete.isEmpty) return;
@@ -426,39 +424,30 @@ class _UpdatePrixMagasinState extends State<UpdatePrixMagasin> {
           );
         },
       ),
-      Row(
-        children: [
-          Expanded(
-            child: SelectField(
-              label: "Qualité",
-              icon: Icons.star_outline,
-              value: selectedQualite ?? "Sélectionner",
-              onTap: () {
-                if (qualites.isEmpty) return;
+      SelectField(
+        label: "Etat de produit",
+        icon: Icons.star_outline,
+        value: selectedQualite ?? "Sélectionner",
+        onTap: () {
+          if (qualites.isEmpty) return;
 
-                SelectorBottomSheet.show<String>(
-                  context: context,
-                  title: "Qualité",
-                  items: qualites,
-                  itemLabel: (q) => q,
-                  selectedItem: selectedQualite,
-                  onSelected: (q) {
-                    setState(() => selectedQualite = q);
-                  },
-                );
-              },
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _buildTextField(
-                controller: ageController,
-                label: "Âge (jours)",
-                icon: Icons.history,
-                isNumber: true),
-          ),
-        ],
+          SelectorBottomSheet.show<String>(
+            context: context,
+            title: "Etat",
+            items: qualites,
+            itemLabel: (q) => q,
+            selectedItem: selectedQualite,
+            onSelected: (q) {
+              setState(() => selectedQualite = q);
+            },
+          );
+        },
       ),
+      _buildTextField(
+          controller: ageController,
+          label: "Âge (jours)",
+          icon: Icons.history,
+          isNumber: true),
     ]);
   }
 
@@ -544,7 +533,6 @@ class _UpdatePrixMagasinState extends State<UpdatePrixMagasin> {
       SelectField(
         label: "Moyen de transport",
         icon: Icons.local_shipping_outlined,
-        isRequired: true,
         value: selectedMoyenTransport ?? "Sélectionner",
         onTap: () {
           if (moyenTransport.isEmpty) return;
@@ -564,7 +552,6 @@ class _UpdatePrixMagasinState extends State<UpdatePrixMagasin> {
       SelectField(
         label: "Unité de transport",
         icon: Icons.local_shipping_outlined,
-        isRequired: true,
         value: selectedUniteTransport ?? "Sélectionner",
         onTap: () {
           if (uniteTransport.isEmpty) return;
@@ -584,7 +571,6 @@ class _UpdatePrixMagasinState extends State<UpdatePrixMagasin> {
       _buildTextField(
         controller: prixTransportController,
         label: "Prix transport",
-        isRequired: true,
         icon: Icons.local_shipping_outlined,
         isNumber: true,
         suffix: "FCFA",
@@ -692,7 +678,7 @@ class _UpdatePrixMagasinState extends State<UpdatePrixMagasin> {
             padding: const EdgeInsets.symmetric(vertical: 14),
           ),
           child: Text(
-           "Modifier",
+            "Modifier",
             style: const TextStyle(fontSize: 16, color: Colors.white),
           ),
         ),
@@ -834,5 +820,4 @@ class _UpdatePrixMagasinState extends State<UpdatePrixMagasin> {
       ),
     );
   }
- 
 }
