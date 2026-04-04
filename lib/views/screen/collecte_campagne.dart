@@ -3,26 +3,24 @@ import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:sim_tchad/core/constants/app_colors.dart';
-import 'package:sim_tchad/models/EnqueteSuivi.dart';
+import 'package:sim_tchad/models/EnqueteCampagne.dart';
 import 'package:sim_tchad/models/Enqueteur.dart';
 import 'package:sim_tchad/services/auth_service.dart';
 import 'package:sim_tchad/utils/database_service.dart';
-import 'package:sim_tchad/utils/server_service.dart';
-import 'package:sim_tchad/views/screen/add_suivi.dart';
-import 'package:sim_tchad/views/screen/detail_suivi.dart';
+import 'package:sim_tchad/views/screen/add_campagne.dart';
 import 'package:sim_tchad/views/widgets/FicheCollecteCard.dart';
 
-class CollectSuivi extends StatefulWidget {
+class CollecteCampagne extends StatefulWidget {
   Enqueteur? enqueteur;
-  CollectSuivi({super.key, this.enqueteur});
+  CollecteCampagne({super.key, this.enqueteur});
 
   @override
-  State<CollectSuivi> createState() => _CollectSuiviState();
+  State<CollecteCampagne> createState() => _CollecteCampagneState();
 }
 
-class _CollectSuiviState extends State<CollectSuivi> {
-  bool isLoading = false;
-  List<EnqueteSuivi> fiches = [];
+class _CollecteCampagneState extends State<CollecteCampagne> {
+   bool isLoading = false;
+  List<EnqueteCampagne> fiches = [];
   String dateEnquete = DateFormat('dd/MM/yyyy').format(DateTime.now());
   DateTime selectedDate = DateTime.now();
   String numFiche = '';
@@ -54,10 +52,10 @@ class _CollectSuiviState extends State<CollectSuivi> {
     setState(() => isLoading = true);
     try {
       final data =
-          await DatabaseService.getFicheBySuivi(widget.enqueteur!.commune!.nom);
+          await DatabaseService.getFicheByCampagne(widget.enqueteur!.commune!.nom);
       if (!mounted) return;
       setState(() {
-        fiches = data.map((e) => EnqueteSuivi.fromJson(e)).toList();
+        fiches = data.map((e) => EnqueteCampagne.fromJson(e)).toList();
       });
     } finally {
       if (!mounted) return;
@@ -73,7 +71,7 @@ class _CollectSuiviState extends State<CollectSuivi> {
           .addPostFrameCallback((_) => _openCreateFicheBottomSheet());
     }
   }
-
+  
   void _openCreateFicheBottomSheet() {
     numFiche = generateNumFiche();
 
@@ -196,7 +194,75 @@ class _CollectSuiviState extends State<CollectSuivi> {
     );
   }
 
-  Future<void> selectDate({Function(void Function())? setInternalState}) async {
+  Future<void> handleSave() async {
+    if (numFiche.isEmpty || dateEnquete.isEmpty) return;
+
+    final exist = await DatabaseService.getFicheSuiviByDateAndSuivi(
+        dateEnquete, widget.enqueteur!.commune!.nom);
+
+    if (exist != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Une fiche existe déjà pour cette date"),
+        ),
+      );
+
+      return;
+    }
+
+    final newFiche = EnqueteCampagne(
+      numFiche: numFiche,
+      dateEnquete: dateEnquete,
+      reference: widget.enqueteur?.commune!.nom,
+      enqueteur: enq!,
+      commune: enq?.commune,
+    );
+
+    await DatabaseService.insert(
+      "EnqueteCampagne",
+      newFiche.toJson(),
+    );
+
+    await _fetchDataLocal();
+  }
+
+  Future<void> handleDelete(int id) async {
+    await DatabaseService.delete(
+      "EnqueteCampagne",
+      "idEnquete",
+      id,
+    );
+    _fetchDataLocal();
+  }
+
+  String generateNumFiche() {
+    final timestamp =
+        DateTime.now().millisecondsSinceEpoch.toString().substring(7);
+
+    final random = (100 + (900 * (DateTime.now().millisecond / 999)).toInt());
+
+    return "$timestamp$random-${widget.enqueteur?.idEnqueteur}";
+  }
+
+  Future<void> _getResultFromNextScreens(
+      BuildContext context, EnqueteCampagne en) async {
+    // final result = await Navigator.push(
+    //     context,
+    //     MaterialPageRoute(
+    //         builder: (_) => DetailSuivi(
+    //               enqueteSuivi: en,
+    //             )));
+    // log(result.toString());
+    // if (result == true) {
+    //   print("Rafraichissement en cours");
+
+    //   if (!mounted) return;
+    //   await _fetchDataLocal();
+    // }
+  }
+  
+
+   Future<void> selectDate({Function(void Function())? setInternalState}) async {
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: selectedDate,
@@ -238,7 +304,7 @@ class _CollectSuiviState extends State<CollectSuivi> {
   Future<void> handleSync(String numFiche) async {
     setState(() => isLoad = true);
     try {
-      await syncDataSuiviByFicheServer(widget.enqueteur!, numFiche);
+      // await syncDataSuByFicheServer(widget.enqueteur!, numFiche);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -264,75 +330,8 @@ class _CollectSuiviState extends State<CollectSuivi> {
       await _fetchDataLocal();
     }
   }
-
-  Future<void> handleSave() async {
-    if (numFiche.isEmpty || dateEnquete.isEmpty) return;
-
-    final exist = await DatabaseService.getFicheSuiviByDateAndSuivi(
-        dateEnquete, widget.enqueteur!.commune!.nom);
-
-    if (exist != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Une fiche existe déjà pour cette date"),
-        ),
-      );
-
-      return;
-    }
-
-    final newFiche = EnqueteSuivi(
-      numFiche: numFiche,
-      dateEnquete: dateEnquete,
-      reference: widget.enqueteur?.commune!.nom,
-      enqueteur: enq,
-      commune: enq?.commune,
-    );
-
-    await DatabaseService.insert(
-      "EnqueteSuivi",
-      newFiche.toJson(),
-    );
-
-    await _fetchDataLocal();
-  }
-
-  Future<void> handleDelete(int id) async {
-    await DatabaseService.delete(
-      "EnqueteSuivi",
-      "idEnquete",
-      id,
-    );
-    _fetchDataLocal();
-  }
-
-  String generateNumFiche() {
-    final timestamp =
-        DateTime.now().millisecondsSinceEpoch.toString().substring(7);
-
-    final random = (100 + (900 * (DateTime.now().millisecond / 999)).toInt());
-
-    return "$timestamp$random-${widget.enqueteur?.idEnqueteur}";
-  }
-
-  Future<void> _getResultFromNextScreens(
-      BuildContext context, EnqueteSuivi en) async {
-    final result = await Navigator.push(
-        context,
-        MaterialPageRoute(
-            builder: (_) => DetailSuivi(
-                  enqueteSuivi: en,
-                )));
-    log(result.toString());
-    if (result == true) {
-      print("Rafraichissement en cours");
-
-      if (!mounted) return;
-      await _fetchDataLocal();
-    }
-  }
-
-  @override
+  
+ @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.lightGrey,
@@ -392,7 +391,7 @@ class _CollectSuiviState extends State<CollectSuivi> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "Suivi des fluxs",
+                      "Suivi des campagnes",
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -450,9 +449,9 @@ class _CollectSuiviState extends State<CollectSuivi> {
             Navigator.push(
                 context,
                 MaterialPageRoute(
-                    builder: (_) => AddSuivi(
-                          commune: fiche.commune,
-                          enqueteSuivi: fiche,
+                    builder: (_) => AddCampagne(
+                          commune: fiche.commune!,
+                          enqueteCampagne: fiche,
                           isEdit: false,
                         )));
           },
@@ -506,7 +505,7 @@ class _CollectSuiviState extends State<CollectSuivi> {
               child: const Text("Annuler")),
           TextButton(
             onPressed: () {
-              DatabaseService.delete("EnqueteSuivi", "idEnquete", id);
+              DatabaseService.delete("EnqueteCampagne", "idEnquete", id);
               _fetchDataLocal();
               Navigator.pop(ctx);
             },

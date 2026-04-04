@@ -2,6 +2,8 @@ import 'package:sim_tchad/models/Acteur.dart';
 import 'package:sim_tchad/models/Commune.dart';
 import 'dart:convert';
 
+import 'package:sim_tchad/models/Personnel.dart';
+
 
 class Enqueteur {
   int? idEnqueteur;
@@ -18,6 +20,7 @@ class Enqueteur {
   bool? resetPassword;
   bool isAnader;
   Acteur? acteur;
+  Personnel? personnel;
   Commune? commune;
 
   Enqueteur({
@@ -35,6 +38,7 @@ class Enqueteur {
     required this.isAnader,
     required this.resetPassword,
     this.acteur,
+    this.personnel,
     this.commune,
   });
 
@@ -62,6 +66,18 @@ static Commune? _parseCommune(dynamic data) {
   return null;
 }
 
+static Personnel? _parsePersonnel(dynamic data) {
+  if (data == null) return null;
+
+  if (data is String) {
+    return Personnel.fromJson(jsonDecode(data));
+  } else if (data is Map<String, dynamic>) {
+    return Personnel.fromJson(data);
+  }
+
+  return null;
+}
+
   /// Conversion depuis JSON
   factory Enqueteur.fromJson(Map<String, dynamic> json) {
   return Enqueteur(
@@ -79,6 +95,7 @@ static Commune? _parseCommune(dynamic data) {
     resetPassword: json['resetPassword'] ?? false,
     isAnader: json['isAnader'] ?? false,
     acteur: _parseActeur(json['acteur']),
+    personnel: _parsePersonnel(json['personnel']),
     commune: _parseCommune(json['commune']),
   );
 }
@@ -100,6 +117,7 @@ static Commune? _parseCommune(dynamic data) {
       'resetPassword': resetPassword,
       'isAnader': isAnader,
       'acteur': acteur?.toJson(),
+      'personnel': personnel?.toJson(),
       'commune': commune?.toJson(),
     };
   }

@@ -24,16 +24,38 @@ class EnqueteCampagne {
   });
 
   /// Conversion depuis JSON
-  factory EnqueteCampagne.fromJson(Map<String, dynamic> json) {
+ factory EnqueteCampagne.fromJson(Map<String, dynamic> json) {
+   
+    Enqueteur parseEnqueteur(dynamic data) {
+      if (data is String) {
+        return Enqueteur.fromJson(jsonDecode(data));
+      } else if (data is Map<String, dynamic>) {
+        return Enqueteur.fromJson(data);
+      } else {
+        throw Exception("Impossible de parser enqueteur: $data");
+      }
+    }
+
+    Commune? parseCommune(dynamic data) {
+      if (data == null) return null;
+      if (data is String) {
+        return Commune.fromJson(jsonDecode(data));
+      } else if (data is Map<String, dynamic>) {
+        return Commune.fromJson(data);
+      } else {
+        throw Exception("Impossible de parser commune: $data");
+      }
+    }
+
     return EnqueteCampagne(
       idEnquete: json['idEnquete'],
       numFiche: json['numFiche'],
       dateEnquete: json['dateEnquete'],
       reference: json['reference'],
-      enqueteur: Enqueteur.fromJson(json['enqueteur']),
       dateEnregistrement: json['dateEnregistrement'],
       dateModif: json['dateModif'],
-      commune: json['commune'] != null ? Commune.fromJson(json['commune']) : null,
+       enqueteur: parseEnqueteur(json['enqueteur']),
+      commune: parseCommune(json['commune']),
     );
   }
 
@@ -44,10 +66,10 @@ class EnqueteCampagne {
       'numFiche': numFiche,
       'dateEnquete': dateEnquete,
       'reference': reference,
-      'enqueteur': enqueteur.toJson(),
+      'enqueteur': jsonEncode(enqueteur.toJson()),
       'dateEnregistrement': dateEnregistrement,
       'dateModif': dateModif,
-      'commune': commune?.toJson(),
+       'commune': commune != null ? jsonEncode(commune!.toJson()) : null
     };
   }
 
@@ -63,7 +85,7 @@ class EnqueteCampagne {
       'dateModif': dateModif,
       'commune': commune != null ? jsonEncode(commune!.toJson()) : null,
     };
-  }
+  } 
 
   /// Reconstruction depuis SQLite
   factory EnqueteCampagne.fromMap(Map<String, dynamic> map) {

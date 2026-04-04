@@ -280,22 +280,24 @@ class _CollecteMarcheState extends State<CollecteMarche> {
                       ),
                       const SizedBox(width: 15),
                       Expanded(
-                        child: ElevatedButton(
-                          onPressed: () async {
-                            await handleSave();
-                            if (context.mounted) Navigator.pop(context);
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.institutionalGreen,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            padding: const EdgeInsets.symmetric(vertical: 15),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                        child: SafeArea(
+                          child: ElevatedButton(
+                            onPressed: () async {
+                              await handleSave();
+                              if (context.mounted) Navigator.pop(context);
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.institutionalGreen,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(vertical: 15),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
+                            child: const Text("Créer la fiche",
+                                style: TextStyle(fontWeight: FontWeight.bold)),
                           ),
-                          child: const Text("Créer la fiche",
-                              style: TextStyle(fontWeight: FontWeight.bold)),
                         ),
                       ),
                     ],

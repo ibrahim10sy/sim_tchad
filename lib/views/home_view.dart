@@ -113,6 +113,23 @@ class _HomePageState extends State<HomePage>
         'enqueteSuivi',
         'commune'
       ],
+      "SuiviCampagnes": [
+        'idSuiviCampagne',
+        'codeSuiviCampagne',
+        'commentaire',
+        'dateSemi',
+        'dateAjout',
+        'superficieHa',
+        'quantiteProduit',
+        'bassinProduction',
+        'uniteMesure',
+        'campagne',
+        'commune',
+        'acteur',
+        'variete',
+        'produit',
+        'enqueteCampagne'
+      ],
       "Produit": [
         'idProduit',
         'codeProduit',

@@ -10,6 +10,7 @@ import 'package:sim_tchad/models/Marche.dart';
 import 'package:sim_tchad/services/auth_service.dart';
 import 'package:sim_tchad/utils/database_service.dart';
 import 'package:sim_tchad/utils/fecth_data.dart';
+import 'package:sim_tchad/views/screen/collecte_campagne.dart';
 import 'package:sim_tchad/views/screen/collecte_magasin.dart';
 import 'package:sim_tchad/views/screen/collecte_marche.dart';
 import 'package:sim_tchad/views/screen/collecte_suivi.dart';
@@ -536,22 +537,6 @@ class _AffectPageState extends State<AffectPage> {
                           CollecteMarche(marche: m, enqueteur: enqueteur))),
             )),
         const SizedBox(height: 16),
-        if (enqueteur!.isAnader) _buildSectionTitle("Suivi des fluxs"),
-        if (enqueteur!.isAnader)
-          CustomCollecteCard(
-            type: 'Suivi des flux',
-            label1: 'Localité',
-            value1: enqueteur!.commune!.nom,
-            label2: 'Point de collecte',
-            value2: enqueteur!.commune!.nom,
-            accentColor:
-                AppColors.institutionalGreen, // Vert clair pour les marchés
-            onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (_) => CollectSuivi(enqueteur: enqueteur))),
-          ),
-        const SizedBox(height: 16),
         if (magasins.isNotEmpty) _buildSectionTitle("Magasins affectés"),
         ...magasins.map((m) => CustomCollecteCard(
             type: 'Magasin',
@@ -568,6 +553,36 @@ class _AffectPageState extends State<AffectPage> {
                           magasin: m,
                           enqueteur: enqueteur,
                         ))))),
+        const SizedBox(height: 16),
+        if (enqueteur!.isAnader) _buildSectionTitle("Suivi des fluxs"),
+        if (enqueteur!.isAnader)
+          CustomCollecteCard(
+            type: 'Suivi des flux',
+            label1: 'Localité',
+            value1: enqueteur!.commune!.nom,
+            label2: 'Point de collecte',
+            value2: enqueteur!.commune!.nom,
+            accentColor:
+                AppColors.institutionalGreen, // Vert clair pour les marchés
+            onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => CollectSuivi(enqueteur: enqueteur))),
+          ),
+        _buildSectionTitle("Suivi des campagnes"),
+        CustomCollecteCard(
+          type: 'Suivi des campagnes',
+          label1: 'Localité',
+          value1: enqueteur!.commune!.nom,
+          label2: 'Point de collecte',
+          value2: enqueteur!.commune!.nom,
+          accentColor:
+              AppColors.institutionalGreen, // Vert clair pour les marchés
+          onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => CollecteCampagne(enqueteur: enqueteur))),
+        ),
       ],
     );
   }

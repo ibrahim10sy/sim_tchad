@@ -364,9 +364,10 @@ Future<Database> openDatabaseConnection() async {
           dateSemi TEXT,
           dateAjout TEXT,
           superficieHa REAL,
-          quantiteProduitTonne REAL,
+          quantiteProduit REAL,
           latitude TEXT,
           longitude TEXT,
+          uniteMesure TEXT,
           bassinProduction TEXT,
           campagne TEXT,
           commune TEXT,
@@ -380,27 +381,27 @@ Future<Database> openDatabaseConnection() async {
 
   await db.execute('''
   CREATE TABLE IF NOT EXISTS SuiviCampagnes (
-   idSuiviCampagne INTEGER PRIMARY KEY,
+  idSuiviCampagne INTEGER PRIMARY KEY,
           codeSuiviCampagne TEXT,
           commentaire TEXT,
           dateSemi TEXT,
           dateAjout TEXT,
           superficieHa REAL,
-          quantiteProduitTonne REAL,
+          quantiteProduit REAL,
           bassinProduction TEXT,
+          uniteMesure TEXT,
           campagne TEXT,
           commune TEXT,
           acteur TEXT,
           variete TEXT,
           produit TEXT,
-          enqueteur TEXT,
           enqueteCampagne TEXT
   )
   ''');
   
   await db.execute('''
   CREATE TABLE IF NOT EXISTS NiveauApprovisionnement (
-     idNiveauApprovisionnement INTEGER PRIMARY KEY,
+    idNiveauApprovisionnement INTEGER PRIMARY KEY,
           codeNiveau TEXT,
           libelle TEXT
   )
@@ -408,7 +409,7 @@ Future<Database> openDatabaseConnection() async {
 
   await db.execute('''
   CREATE TABLE IF NOT EXISTS  CategorieProduit(
-     idCategorieProduit INTEGER PRIMARY KEY,
+    idCategorieProduit INTEGER PRIMARY KEY,
           codeCategorie TEXT,
           libelle TEXT,
           filiere TEXT

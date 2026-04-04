@@ -1,8 +1,10 @@
 import 'dart:convert';
+import 'package:sim_tchad/models/EnqueteCampagne.dart';
 import 'package:sim_tchad/models/EnqueteCollecte.dart';
 import 'package:sim_tchad/models/EnqueteMagasin.dart';
 import 'package:sim_tchad/models/EnqueteSuivi.dart';
 import 'package:sim_tchad/models/PrixMarche.dart';
+import 'package:sim_tchad/models/SuiviCampagne.dart';
 import 'package:sim_tchad/models/SuiviFlux.dart';
 import 'package:sim_tchad/models/prixMagasin.dart';
 import 'package:sqflite/sqflite.dart';
@@ -207,6 +209,24 @@ class DatabaseService {
       return [];
     }
   }
+  
+  static Future<List<Map<String, dynamic>>> getFicheByCampagne(String reference,
+      [List<String>? relationFields]) async {
+    final db = await openDatabaseConnection();
+    if (db == null) return [];
+
+    try {
+      final rows = await db.rawQuery(
+        'SELECT * FROM EnqueteCampagne WHERE reference LIKE ?',
+        ['%$reference%'],
+      );
+
+      return rows.map((row) => decodeRelations(row, relationFields)).toList();
+    } catch (error) {
+      print(error);
+      return [];
+    }
+  }
 
   static Future<List<Map<String, dynamic>>> getFicheByMarche(String reference,
       [List<String>? relationFields]) async {
@@ -264,6 +284,27 @@ class DatabaseService {
       return [];
     }
   }
+  
+  static Future<List<SuiviCampagne>> getAllSuiviCampagnes(
+      [List<String>? relationFields]) async {
+    final db = await openDatabaseConnection();
+    if (db == null) return [];
+
+    try {
+      final rows = await db.rawQuery('SELECT * FROM SuiviCampagnes');
+      print(rows
+          .map((row) =>
+              SuiviCampagne.fromMap(decodeRelations(row, relationFields)))
+          .toList());
+      return rows
+          .map((row) =>
+              SuiviCampagne.fromMap(decodeRelations(row, relationFields)))
+          .toList();
+    } catch (error) {
+      print("Erreur magasin $error");
+      return [];
+    }
+  }
 
   static Future<List<SuiviFlux>> getAllSuivi(
       [List<String>? relationFields]) async {
@@ -289,6 +330,21 @@ class DatabaseService {
 
     try {
       final rows = await db.rawQuery('SELECT * FROM EnqueteCollecte');
+
+      return rows.map((row) => decodeRelations(row, relationFields)).toList();
+    } catch (error) {
+      print("Erreur collecte ${error}");
+      return [];
+    }
+  }
+  
+  static Future<List<Map<String, dynamic>>> getAllFicheCampagne(
+      [List<String>? relationFields]) async {
+    final db = await openDatabaseConnection();
+    if (db == null) return [];
+
+    try {
+      final rows = await db.rawQuery('SELECT * FROM EnqueteCampagne');
 
       return rows.map((row) => decodeRelations(row, relationFields)).toList();
     } catch (error) {
@@ -453,6 +509,49 @@ class DatabaseService {
     }
   }
 
+  static Future<List<SuiviCampagne>> getCampagneByNum(String numFiche,
+      [List<String>? relationFields]) async {
+    final db = await openDatabaseConnection();
+    if (db == null) return [];
+
+    try {
+      final rows = await db.query('SuiviCampagne');
+
+      // Filtrer ceux qui correspondent au numFiche de l'enquete
+      final filtered = rows.where((row) {
+        if (row['enqueteCampagne'] == null) return false;
+
+        try {
+          final dynamic decoded = row['enqueteCampagne'];
+          Map<String, dynamic> enqueteJson;
+
+          if (decoded is String) {
+            enqueteJson = Map<String, dynamic>.from(jsonDecode(decoded));
+          } else if (decoded is Map) {
+            enqueteJson = Map<String, dynamic>.from(decoded);
+          } else {
+            return false;
+          }
+
+          return enqueteJson['numFiche'] == numFiche;
+        } catch (e) {
+          print('Erreur décodage JSON enqueteCampagne: $e');
+          return false;
+        }
+      }).toList();
+
+      final prixList = filtered.map((row) {
+        final rowWithRelations = decodeRelations(row, relationFields);
+        return SuiviCampagne.fromMap(rowWithRelations);
+      }).toList();
+
+      return prixList;
+    } catch (error) {
+      print('Erreur getByNum: $error');
+      return [];
+    }
+  }
+
   // static Future<List<Map<String, dynamic>>> getFicheBySuivi(String reference,
   //     [List<String>? relationFields]) async {
   //   final db = await openDatabaseConnection();
@@ -610,6 +709,59 @@ class DatabaseService {
     return null;
   }
 
+  static Future<EnqueteCampagne?> getFicheCampagneByNumFiche(
+    String numFiche, [
+    List<String>? relationFields,
+  ]) async {
+    final db = await openDatabaseConnection();
+    if (db == null) return null;
+
+    try {
+      final result = await db.query(
+        "EnqueteCampagne",
+        where: "numFiche = ?",
+        whereArgs: [numFiche],
+        limit: 1,
+      );
+
+      if (result.isNotEmpty) {
+        Map<String, dynamic> data = result.first;
+
+        // Décoder les relations si nécessaire
+        if (relationFields != null && relationFields.isNotEmpty) {
+          data = decodeRelations(data, relationFields);
+        }
+
+        // 🔥 Conversion en objet
+        return EnqueteCampagne.fromJson(data);
+      }
+    } catch (e) {
+      print("Erreur EnqueteCampagne: $e");
+    }
+
+    return null;
+  }
+
+  static Future<Map<String, dynamic>?> getFicheCampagneByDateAndCampagne(
+      String date, String reference,
+      [List<String>? relationFields]) async {
+    final db = await openDatabaseConnection();
+    if (db == null) return null;
+
+    // On vérifie si une fiche existe pour CETTE date ET CE magasin précis
+    final result = await db.query(
+      "EnqueteCampagne",
+      where: "dateEnquete = ? AND reference = ?",
+      whereArgs: [date, reference],
+      limit: 1,
+    );
+
+    if (result.isNotEmpty) {
+      return decodeRelations(result.first, relationFields);
+    }
+    return null;
+  }
+
   static Future<Map<String, dynamic>?> getFicheMagasinByDateAndMagasin(
       String date, String reference,
       [List<String>? relationFields]) async {
@@ -661,6 +813,24 @@ class DatabaseService {
       "EnqueteCollecte",
       where: "dateEnquete = ? AND reference = ?",
       whereArgs: [date, reference],
+      limit: 1,
+    );
+
+    if (result.isNotEmpty) {
+      return decodeRelations(result.first, relationFields);
+    }
+    return null;
+  }
+
+  static Future<Map<String, dynamic>?> getFicheCampagneByDate(String date,
+      [List<String>? relationFields]) async {
+    final db = await openDatabaseConnection();
+    if (db == null) return null;
+
+    final result = await db.query(
+      "EnqueteCampagne",
+      where: "dateEnquete = ?",
+      whereArgs: [date],
       limit: 1,
     );
 

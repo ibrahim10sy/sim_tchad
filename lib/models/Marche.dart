@@ -7,7 +7,7 @@ class Marche {
   final String nomMarche;
   final String? latitude;
   final String localite;
-  final String? description;
+  final String? observation;
   final String? dateAjout;
   final String? dateModif;
   final String? longitude;
@@ -19,7 +19,7 @@ class Marche {
     required this.nomMarche,
     this.latitude,
     required this.localite,
-    this.description,
+    this.observation,
     this.dateAjout,
     this.dateModif,
     this.longitude,
@@ -44,7 +44,7 @@ class Marche {
       nomMarche: json['nomMarche'],
       latitude: json['latitude'],
       localite: json['localite'],
-      description: json['description'],
+      observation: json['observation'],
       dateAjout: json['dateAjout'],
       dateModif: json['dateModif'],
       longitude: json['longitude'],
@@ -60,7 +60,7 @@ class Marche {
       'nomMarche': nomMarche,
       'latitude': latitude,
       'localite': localite,
-      'description': description,
+      'observation': observation,
       'dateAjout': dateAjout,
       'dateModif': dateModif,
       'longitude': longitude,

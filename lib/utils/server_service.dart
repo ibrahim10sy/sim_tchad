@@ -383,10 +383,13 @@ Future<bool> syncDataMarcheByFicheServer(
                     item.niveau?.idNiveauApprovisionnement,
               }
             : null,
-        "marche":
-            item.marche != null ? {"idMarche": item.marche!.idMarche} : null,
-        "enqueteur":
-            enqueteur != null ? {"idEnqueteur": enqueteur.idEnqueteur} : null,
+        "marche": item.marche != null
+            ? {
+                "idMarche": item.marche!.idMarche,
+                "nomMarche": item.marche!.nomMarche
+              }
+            : null,
+        "enqueteur": enqueteur != null ? enqueteur : null,
         "enqueteCollecte": item.enqueteCollecte != null
             ? {"numFiche": item.enqueteCollecte!.numFiche}
             : null,

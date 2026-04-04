@@ -16,38 +16,39 @@ class AuthService {
 
   static String baseUrl = AppConstants.baseUrl;
 
-  
-
-static Future<bool> resetPassword(String codeEnqueteur, String newPassword) async {
-  try {
-    // Utilisation de query parameters comme dans ton code React
-    final response = await http.put(
-      Uri.parse("${baseUrl}enqueteurs/$codeEnqueteur/password?password=$newPassword"),
-      headers: {"Content-Type": "application/json"},
-    );
-
-    if (response.statusCode == 200) {
-      final prefs = await SharedPreferences.getInstance();
-      
-      // Mettre à jour les identifiants locaux pour le prochain login offline
-      await prefs.setString(
-        "userLogin",
-        jsonEncode({"codeEnqueteur": codeEnqueteur, "password": newPassword}),
+  static Future<bool> resetPassword(
+      String codeEnqueteur, String newPassword) async {
+    try {
+      // Utilisation de query parameters comme dans ton code React
+      final response = await http.put(
+        Uri.parse(
+            "${baseUrl}enqueteurs/$codeEnqueteur/password?password=$newPassword"),
+        headers: {"Content-Type": "application/json"},
       );
-      
-      // Marquer localement que c'est fait
-      await prefs.setBool("firstLoginDone", true);
-      return true;
-    }
-    return false;
-  } catch (e) {
-    print("Erreur resetPassword: $e");
-    return false;
-  }
-}
 
-/// Méthode principale de login
-  static Future<void> loginUser(BuildContext context, String code, String password) async {
+      if (response.statusCode == 200) {
+        final prefs = await SharedPreferences.getInstance();
+
+        // Mettre à jour les identifiants locaux pour le prochain login offline
+        await prefs.setString(
+          "userLogin",
+          jsonEncode({"codeEnqueteur": codeEnqueteur, "password": newPassword}),
+        );
+
+        // Marquer localement que c'est fait
+        await prefs.setBool("firstLoginDone", true);
+        return true;
+      }
+      return false;
+    } catch (e) {
+      print("Erreur resetPassword: $e");
+      return false;
+    }
+  }
+
+  /// Méthode principale de login
+  static Future<void> loginUser(
+      BuildContext context, String code, String password) async {
     print("loginUser called >>>");
 
     try {
@@ -70,26 +71,50 @@ static Future<bool> resetPassword(String codeEnqueteur, String newPassword) asyn
       if (onlineLogin) {
         print("Connexion en ligne OK");
         if (context.mounted) {
-  Navigator.of(context).pushReplacementNamed("/home");
-}
+          Navigator.of(context).pushReplacementNamed("/home");
+        }
       }
     } catch (e) {
       print("Erreur login: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Échec de connexion. Vérifiez vos identifiants.")),
+        const SnackBar(
+            content: Text("Échec de connexion. Vérifiez vos identifiants.")),
       );
     }
   }
 
- static Future<bool> login(String codeEnqueteur, String password) async {
+//   static Future<bool> isSessionValid() async {
+//   final prefs = await SharedPreferences.getInstance();
+//   final loginTime = prefs.getInt("loginTime");
+//   if (loginTime == null) return false;
+
+//   final now = DateTime.now().millisecondsSinceEpoch;
+//   // 1 minute = 60 000 ms
+//   return (now - loginTime) < 60000;
+// }
+
+  static Future<bool> isSessionValid() async {
+  final prefs = await SharedPreferences.getInstance();
+
+  final loginTime = prefs.getInt("loginTime");
+
+  if (loginTime == null) return false;
+
+  final now = DateTime.now().millisecondsSinceEpoch;
+  final diff = now - loginTime;
+
+  // 1 heure = 3600000 ms
+  return diff < 60000;
+}
+
+
+  static Future<bool> login(String codeEnqueteur, String password) async {
     try {
       final response = await http.post(
         Uri.parse("${baseUrl}enqueteurs/login"),
         headers: {"Content-Type": "application/json"},
-        body: jsonEncode({
-          "codeEnqueteur": codeEnqueteur,
-          "password": password
-        }),
+        body:
+            jsonEncode({"codeEnqueteur": codeEnqueteur, "password": password}),
       );
 
       print('STATUS: ${response.statusCode}');
@@ -103,11 +128,14 @@ static Future<bool> resetPassword(String codeEnqueteur, String newPassword) asyn
         // 🔹 Token
         await prefs.setString("authToken", jsonEncode(data));
 
+        await prefs.setInt(
+          "loginTime",
+          DateTime.now().millisecondsSinceEpoch,
+        );
+
         // 🔥 IMPORTANT : sauvegarde login local
-        await prefs.setString("userLogin", jsonEncode({
-          "codeEnqueteur": codeEnqueteur,
-          "password": password
-        }));
+        await prefs.setString("userLogin",
+            jsonEncode({"codeEnqueteur": codeEnqueteur, "password": password}));
 
         return true;
       }
@@ -127,8 +155,7 @@ static Future<bool> resetPassword(String codeEnqueteur, String newPassword) asyn
     if (storedLogin != null) {
       final data = jsonDecode(storedLogin);
 
-      return data["codeEnqueteur"] == code &&
-             data["password"] == password;
+      return data["codeEnqueteur"] == code && data["password"] == password;
     }
 
     return false;
@@ -151,12 +178,10 @@ static Future<bool> resetPassword(String codeEnqueteur, String newPassword) asyn
     return !prefs.containsKey("userLogin");
   }
 
-  
-
   /// Déconnexion
   static Future<void> logout(BuildContext context) async {
     // 1️⃣ Supprimer le token et info utilisateur
-  final prefs = await SharedPreferences.getInstance();
+    final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
 
     // 2️⃣ Supprimer toutes les données SQLite
