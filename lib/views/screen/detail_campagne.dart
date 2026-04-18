@@ -2,29 +2,28 @@ import 'dart:developer';
 
 import 'package:flutter/material.dart';
 import 'package:sim_tchad/core/constants/app_colors.dart';
-import 'package:sim_tchad/models/EnqueteMagasin.dart';
+import 'package:sim_tchad/models/EnqueteCampagne.dart';
 import 'package:sim_tchad/models/Enqueteur.dart';
-import 'package:sim_tchad/models/prixMagasin.dart';
+import 'package:sim_tchad/models/SuiviCampagne.dart';
 import 'package:sim_tchad/services/auth_service.dart';
 import 'package:sim_tchad/utils/database_service.dart';
 import 'package:sim_tchad/utils/server_service.dart';
-import 'package:sim_tchad/views/screen/AddProduitMagasin.dart';
-import 'package:sim_tchad/views/widgets/PrixMagasinCard.dart';
+import 'package:sim_tchad/views/screen/add_campagne.dart';
 import 'package:sim_tchad/views/widgets/ProduitCollecteCard.dart';
 
-class DetailMagasin extends StatefulWidget {
-  EnqueteMagasin? enqueteMagasin;
-  DetailMagasin({super.key, this.enqueteMagasin});
+class DetailCampagne extends StatefulWidget {
+  EnqueteCampagne? enqueteCampagne;
+  DetailCampagne({super.key, required this.enqueteCampagne});
 
   @override
-  State<DetailMagasin> createState() => _DetailMagasinState();
+  State<DetailCampagne> createState() => _DetailCampagneState();
 }
 
-class _DetailMagasinState extends State<DetailMagasin> {
+class _DetailCampagneState extends State<DetailCampagne> {
   bool isLoading = false;
   Enqueteur? enqueteur;
-  List<PrixMagasin> allFiches = []; // Liste originale
-  List<PrixMagasin> filteredFiches = []; // Liste pour l'affichage
+  List<SuiviCampagne> allFiches = [];
+  List<SuiviCampagne> filteredFiches = [];
   String searchQuery = "";
   bool isLoad = false;
 
@@ -50,10 +49,10 @@ class _DetailMagasinState extends State<DetailMagasin> {
     if (enqueteur == null) return;
     setState(() => isLoading = true);
     try {
-      final magasinsData = await DatabaseService.getPrixMagasinByNum(
-          widget.enqueteMagasin!.numFiche);
+      final suiviData = await DatabaseService.getCampagneByNum(
+          widget.enqueteCampagne!.numFiche);
       setState(() {
-        allFiches = magasinsData;
+        allFiches = suiviData;
         _applyFilter(searchQuery); // Ré-appliquer le filtre après recharge
       });
     } finally {
@@ -64,8 +63,8 @@ class _DetailMagasinState extends State<DetailMagasin> {
   Future<void> handleSync() async {
     setState(() => isLoad = true);
     try {
-      await syncDataMagasinByFicheServer(
-          widget.enqueteMagasin!.enqueteur!, widget.enqueteMagasin!.numFiche);
+      await syncDataSuiviCampagneByFicheServer(
+          widget.enqueteCampagne!.enqueteur, widget.enqueteCampagne!.numFiche);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -81,7 +80,7 @@ class _DetailMagasinState extends State<DetailMagasin> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Erreur : ${e.toString()}"),
+            content: Text("Erreur de synchroniation. Veuillez réessayer"),
             backgroundColor: Colors.redAccent,
             behavior: SnackBarBehavior.floating,
           ),
@@ -94,12 +93,16 @@ class _DetailMagasinState extends State<DetailMagasin> {
   }
 
   Future<void> _getResultFromNextScreens(
-      BuildContext context, EnqueteMagasin en, PrixMagasin p) async {
+      BuildContext context, EnqueteCampagne en, SuiviCampagne p) async {
     final result = await Navigator.push(
         context,
         MaterialPageRoute(
-            builder: (_) => AddProduitMagasin(
-                isEdit: true, enqueteMagasin: en, prixMagasin: p)));
+            builder: (_) => AddCampagne(
+                  isEdit: true,
+                  enqueteCampagne: en,
+                  suiviCampagne: p,
+                  commune: p.commune,
+                )));
     log(result.toString());
     if (result == true) {
       print("Rafraichissement en cours");
@@ -122,8 +125,8 @@ class _DetailMagasinState extends State<DetailMagasin> {
 
   Future<void> handleDelete(int id) async {
     await DatabaseService.delete(
-      "PrixMagasin",
-      "idPrixMagasin",
+      "SuiviCampagne",
+      "idSuiviCampagne",
       id,
     );
     _fetchDataLocal();
@@ -140,86 +143,41 @@ class _DetailMagasinState extends State<DetailMagasin> {
         foregroundColor: Colors.white,
         elevation: 0,
       ),
-      body: Stack(
+      body: Column(
         children: [
-          Column(
-            children: [
-              _buildInfoEnqueteHeader(), // En-tête avec infos EnqueteMagasin
-              _buildSearchBar(), // Champ de recherche
-              Expanded(
-                child: isLoading
-                    ? const Center(
-                        child: CircularProgressIndicator(
-                            color: AppColors.primaryGreen))
-                    : filteredFiches.isEmpty
-                        ? _buildEmptyState()
-                        : RefreshIndicator(
-                            onRefresh: _fetchDataLocal,
-                            child: ListView.builder(
-                              padding: const EdgeInsets.only(bottom: 80),
-                              itemCount: filteredFiches.length,
-                              itemBuilder: (context, index) {
-                                return ProduitCollecteCard(
-                                  libelle:
-                                      filteredFiches[index].produit!.nomProduit,
-                                  localite: filteredFiches[index]
-                                      .enqueteMagasin!
-                                      .commune!
-                                      .nom,
-                                  onEdit: () => _getResultFromNextScreens(
-                                      context,
-                                      widget.enqueteMagasin!,
-                                      filteredFiches[index]),
-                                  onDelete: () => _showDeleteConfirm(
-                                      filteredFiches[index].idPrixMagasin!),
-                                );
-                              },
-                            ),
-                          ),
-              ),
-            ],
-          ),
-          if (isLoad)
-            Container(
-              color: Colors.black.withOpacity(
-                  0.5), // Un peu plus sombre pour faire ressortir le message
-              child: Center(
-                child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 40),
-                  padding: const EdgeInsets.all(25),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min, // S'adapte au contenu
-                    children: [
-                      const Text(
-                        "Synchronisation en cours...",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          color: Colors.black87,
+          _buildInfoEnqueteHeader(), // En-tête avec infos EnqueteMagasin
+          _buildSearchBar(), // Champ de recherche
+          Expanded(
+            child: isLoading
+                ? const Center(
+                    child: CircularProgressIndicator(
+                        color: AppColors.primaryGreen))
+                : filteredFiches.isEmpty
+                    ? _buildEmptyState()
+                    : RefreshIndicator(
+                        onRefresh: _fetchDataLocal,
+                        child: ListView.builder(
+                          padding: const EdgeInsets.only(bottom: 80),
+                          itemCount: filteredFiches.length,
+                          itemBuilder: (context, index) {
+                            return ProduitCollecteCard(
+                              libelle:
+                                  filteredFiches[index].produit!.nomProduit,
+                              localite: filteredFiches[index]
+                                  .enqueteCampagne!
+                                  .commune!
+                                  .nom,
+                              onEdit: () => _getResultFromNextScreens(
+                                  context,
+                                  widget.enqueteCampagne!,
+                                  filteredFiches[index]),
+                              onDelete: () => _showDeleteConfirm(
+                                  filteredFiches[index].idSuiviCampagne!),
+                            );
+                          },
                         ),
                       ),
-                      const SizedBox(height: 20),
-                      // Barre de progression linéaire
-                      LinearProgressIndicator(
-                        backgroundColor: Colors.grey[200],
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                            AppColors.institutionalGreen),
-                        minHeight: 6, // Un peu plus épaisse pour la visibilité
-                      ),
-                      const SizedBox(height: 10),
-                      const Text(
-                        "Veuillez patienter",
-                        style: TextStyle(fontSize: 13, color: Colors.grey),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+          ),
         ],
       ),
       // floatingActionButton: FloatingActionButton.extended(
@@ -233,7 +191,7 @@ class _DetailMagasinState extends State<DetailMagasin> {
 
   // --- Widget En-tête Informations ---
   Widget _buildInfoEnqueteHeader() {
-    final e = widget.enqueteMagasin;
+    final e = widget.enqueteCampagne;
     return Container(
       width: double.infinity,
       color: AppColors.institutionalGreen,
@@ -250,7 +208,7 @@ class _DetailMagasinState extends State<DetailMagasin> {
               children: [
                 const Icon(Icons.store, color: Colors.white, size: 20),
                 const SizedBox(width: 10),
-                Text(e?.magasin.nomMagasin ?? "Magasin inconnu",
+                Text("Suivi des campagnes",
                     style: const TextStyle(
                         color: Colors.white, fontWeight: FontWeight.bold)),
               ],
@@ -267,6 +225,99 @@ class _DetailMagasinState extends State<DetailMagasin> {
           ],
         ),
       ),
+    );
+  }
+
+  Future<void> _showSyncConfirm() async {
+    return showDialog<void>(
+      context: context,
+      // BarrierDismissible à false si l'action est critique
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(
+                28), // Bords plus arrondis (Material 3 style)
+          ),
+          // On ajoute une icône pour le feedback visuel
+          title: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.institutionalGreen.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.cloud_upload_outlined,
+                  color: AppColors.institutionalGreen,
+                  size: 40,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                "Synchronisation",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+          content: const Text(
+            "Voulez-vous lancer la synchronisation des données avec le serveur ?",
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.black54,
+              fontSize: 16,
+            ),
+          ),
+          actionsPadding:
+              const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          actionsAlignment:
+              MainAxisAlignment.center, // Aligner les boutons au centre
+          actions: [
+            // Bouton Annuler plus discret
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              style: TextButton.styleFrom(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              ),
+              child: Text(
+                "Plus tard",
+                style: TextStyle(
+                    color: Colors.grey[600], fontWeight: FontWeight.w600),
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Bouton Action principal plus imposant
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                handleSync();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.institutionalGreen,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text(
+                "Envoyer les données",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -361,92 +412,6 @@ class _DetailMagasinState extends State<DetailMagasin> {
     );
   }
 
-  Future<void> _showSyncConfirm() async {
-  return showDialog<void>(
-    context: context,
-    // BarrierDismissible à false si l'action est critique
-    barrierDismissible: true, 
-    builder: (BuildContext context) {
-      return AlertDialog(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(28), // Bords plus arrondis (Material 3 style)
-        ),
-        // On ajoute une icône pour le feedback visuel
-        title: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppColors.institutionalGreen.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.cloud_upload_outlined,
-                color: AppColors.institutionalGreen,
-                size: 40,
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              "Synchronisation",
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-        content: const Text(
-          "Voulez-vous lancer la synchronisation des données avec le serveur ?",
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: Colors.black54,
-            fontSize: 16,
-          ),
-        ),
-        actionsPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        actionsAlignment: MainAxisAlignment.center, // Aligner les boutons au centre
-        actions: [
-          // Bouton Annuler plus discret
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            ),
-            child: Text(
-              "Plus tard",
-              style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.w600),
-            ),
-          ),
-          const SizedBox(width: 8),
-          // Bouton Action principal plus imposant
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              handleSync();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.institutionalGreen,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: const Text(
-               "Envoyer les données",
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
-      );
-    },
-  );
-}
   void _showDeleteConfirm(int id) {
     showDialog(
       context: context,

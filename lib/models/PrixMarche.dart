@@ -204,7 +204,6 @@ class PrixMarche {
   Map<String, dynamic> toJson() {
     return {
       'variete': variete,
-      'age': age,
       'prixUnite1': prixUnite1,
       'prixUnite2': prixUnite2,
       // 'prixUnite3': prixUnite3,

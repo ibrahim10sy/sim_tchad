@@ -23,8 +23,8 @@ class DetailSuivi extends StatefulWidget {
 class _DetailSuiviState extends State<DetailSuivi> {
   bool isLoading = false;
   Enqueteur? enqueteur;
-  List<SuiviFlux> allFiches = []; // Liste originale
-  List<SuiviFlux> filteredFiches = []; // Liste pour l'affichage
+  List<SuiviFlux> allFiches = [];
+  List<SuiviFlux> filteredFiches = [];
   String searchQuery = "";
   bool isLoad = false;
 
@@ -183,7 +183,7 @@ class _DetailSuiviState extends State<DetailSuivi> {
       // ),
     );
   }
- 
+
   // --- Widget En-tête Informations ---
   Widget _buildInfoEnqueteHeader() {
     final e = widget.enqueteSuivi;
@@ -226,36 +226,89 @@ class _DetailSuiviState extends State<DetailSuivi> {
   Future<void> _showSyncConfirm() async {
     return showDialog<void>(
       context: context,
+      // BarrierDismissible à false si l'action est critique
+      barrierDismissible: true,
       builder: (BuildContext context) {
         return AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text(
-            "Confirmation",
-            style: TextStyle(fontWeight: FontWeight.bold),
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(
+                28), // Bords plus arrondis (Material 3 style)
+          ),
+          // On ajoute une icône pour le feedback visuel
+          title: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.institutionalGreen.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.cloud_upload_outlined,
+                  color: AppColors.institutionalGreen,
+                  size: 40,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                "Synchronisation",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
           content: const Text(
             "Voulez-vous lancer la synchronisation des données avec le serveur ?",
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.black54,
+              fontSize: 16,
+            ),
           ),
+          actionsPadding:
+              const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          actionsAlignment:
+              MainAxisAlignment.center, // Aligner les boutons au centre
           actions: [
+            // Bouton Annuler plus discret
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child:
-                  const Text("ANNULER", style: TextStyle(color: Colors.grey)),
+              style: TextButton.styleFrom(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              ),
+              child: Text(
+                "Plus tard",
+                style: TextStyle(
+                    color: Colors.grey[600], fontWeight: FontWeight.w600),
+              ),
             ),
+            const SizedBox(width: 8),
+            // Bouton Action principal plus imposant
             ElevatedButton(
               onPressed: () {
-                Navigator.of(context).pop(); // Ferme le dialogue
-                handleSync(); // Lance la sync
+                Navigator.of(context).pop();
+                handleSync();
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.institutionalGreen,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: const Text("SYNCHRONISER",
-                  style: TextStyle(color: Colors.white)),
+              child: const Text(
+                 "Envoyer les données",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
             ),
           ],
         );

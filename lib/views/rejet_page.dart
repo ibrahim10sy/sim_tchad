@@ -2,10 +2,12 @@ import 'dart:developer';
 
 import 'package:flutter/material.dart';
 import 'package:sim_tchad/core/constants/app_colors.dart';
+import 'package:sim_tchad/models/EnqueteCampagne.dart';
 import 'package:sim_tchad/models/EnqueteCollecte.dart';
 import 'package:sim_tchad/models/EnqueteMagasin.dart';
 import 'package:sim_tchad/models/EnqueteSuivi.dart';
 import 'package:sim_tchad/models/PrixMarche.dart';
+import 'package:sim_tchad/models/SuiviCampagne.dart';
 import 'package:sim_tchad/models/SuiviFlux.dart';
 import 'package:sim_tchad/models/prixMagasin.dart';
 import 'package:sim_tchad/utils/database_service.dart';
@@ -13,6 +15,7 @@ import 'package:sim_tchad/utils/server_service.dart';
 import 'package:sim_tchad/views/screen/AddProduitMagasin.dart';
 import 'package:sim_tchad/views/screen/add_produit_marche.dart';
 import 'package:sim_tchad/views/screen/add_suivi.dart';
+import 'package:sim_tchad/views/screen/update_capagne.dart';
 import 'package:sim_tchad/views/screen/update_prix_magasin.dart';
 import 'package:sim_tchad/views/screen/update_prix_marche.dart';
 import 'package:sim_tchad/views/screen/update_suivi.dart';
@@ -30,6 +33,7 @@ class _RejetPageState extends State<RejetPage> {
   List<PrixMarche> fiches = [];
   List<PrixMagasin> fichesMagasin = [];
   List<SuiviFlux> fichesSuivi = [];
+  List<SuiviCampagne> fichesSuiviCampagne = [];
   String syncStatus = "idle";
   bool isSyncing = false;
 
@@ -52,6 +56,7 @@ class _RejetPageState extends State<RejetPage> {
       final dataMarche = await DatabaseService.getAllPrixMarches();
       final dataMagasin = await DatabaseService.getAllPrixMagasins();
       final dataSuivi = await DatabaseService.getAllSuivi();
+      final dataCampagne = await DatabaseService.getAllSuiviCampagnes();
       print(dataMagasin.toList());
 
       if (!mounted) return;
@@ -59,6 +64,7 @@ class _RejetPageState extends State<RejetPage> {
         fiches = dataMarche;
         fichesMagasin = dataMagasin;
         fichesSuivi = dataSuivi;
+        fichesSuiviCampagne = dataCampagne;
       });
     } catch (e) {
       debugPrint("Erreur : $e");
@@ -106,6 +112,21 @@ class _RejetPageState extends State<RejetPage> {
         MaterialPageRoute(
             builder: (_) =>
                 UpdatePrixMarche(enqueteCollecte: en, prixMarche: p)));
+    log(result.toString());
+    if (result == true) {
+      print("Rafraichissement en cours");
+
+      if (!mounted) return;
+      await _fetchDataLocal();
+    }
+  }
+
+  Future<void> _getResultFromNextCampagne(
+      BuildContext context, EnqueteCampagne en, SuiviCampagne suivi) async {
+    final result = await Navigator.push(
+        context,
+        MaterialPageRoute(
+            builder: (_) => UpdateCampagne(enqueteCampagne: en, suivi: suivi)));
     log(result.toString());
     if (result == true) {
       print("Rafraichissement en cours");
@@ -179,6 +200,13 @@ class _RejetPageState extends State<RejetPage> {
           context: context,
           setSyncStatus: setSyncStatus,
         ),
+        syncData(
+          label: "SuiviCampagne",
+          data: fichesSuiviCampagne,
+          syncFunction: syncDataCampagneUpdateServer,
+          context: context,
+          setSyncStatus: setSyncStatus,
+        ),
       ]);
 
       await _fetchDataLocal();
@@ -210,8 +238,10 @@ class _RejetPageState extends State<RejetPage> {
 
   @override
   Widget build(BuildContext context) {
-    bool toutEstVide =
-        fiches.isEmpty && fichesMagasin.isEmpty && fichesSuivi.isEmpty;
+    bool toutEstVide = fiches.isEmpty &&
+        fichesMagasin.isEmpty &&
+        fichesSuivi.isEmpty &&
+        fichesSuiviCampagne.isEmpty;
 
     return Scaffold(
       backgroundColor: AppColors.lightGrey,
@@ -284,6 +314,12 @@ class _RejetPageState extends State<RejetPage> {
                                 "Suivis de Prix", fichesSuivi.length),
                             ...fichesSuivi.map((f) => _buildSuiviItem(f)),
                           ],
+                          if (fichesSuiviCampagne.isNotEmpty) ...[
+                            _buildSectionTitle("Suivis des campagnes",
+                                fichesSuiviCampagne.length),
+                            ...fichesSuiviCampagne
+                                .map((f) => _buildSuiviCampagneItem(f)),
+                          ],
                         ],
                       ),
                     ),
@@ -355,36 +391,89 @@ class _RejetPageState extends State<RejetPage> {
   Future<void> _showSyncConfirm() async {
     return showDialog<void>(
       context: context,
+      // BarrierDismissible à false si l'action est critique
+      barrierDismissible: true,
       builder: (BuildContext context) {
         return AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text(
-            "Confirmation",
-            style: TextStyle(fontWeight: FontWeight.bold),
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(
+                28), // Bords plus arrondis (Material 3 style)
+          ),
+          // On ajoute une icône pour le feedback visuel
+          title: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.institutionalGreen.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.cloud_upload_outlined,
+                  color: AppColors.institutionalGreen,
+                  size: 40,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                "Synchronisation",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
           content: const Text(
             "Voulez-vous lancer la synchronisation des données avec le serveur ?",
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.black54,
+              fontSize: 16,
+            ),
           ),
+          actionsPadding:
+              const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          actionsAlignment:
+              MainAxisAlignment.center, // Aligner les boutons au centre
           actions: [
+            // Bouton Annuler plus discret
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child:
-                  const Text("ANNULER", style: TextStyle(color: Colors.grey)),
+              style: TextButton.styleFrom(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              ),
+              child: Text(
+                "Plus tard",
+                style: TextStyle(
+                    color: Colors.grey[600], fontWeight: FontWeight.w600),
+              ),
             ),
+            const SizedBox(width: 8),
+            // Bouton Action principal plus imposant
             ElevatedButton(
               onPressed: () {
-                Navigator.of(context).pop(); // Ferme le dialogue
-                handleSyncData(); // Lance la sync
+                Navigator.of(context).pop();
+                handleSyncData();
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.institutionalGreen,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: const Text("SYNCHRONISER",
-                  style: TextStyle(color: Colors.white)),
+              child: const Text(
+                "Envoyer les données",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
             ),
           ],
         );
@@ -457,6 +546,19 @@ class _RejetPageState extends State<RejetPage> {
         ));
   }
 
+  Widget _buildSuiviCampagneItem(SuiviCampagne fiche) {
+    return Padding(
+        padding: const EdgeInsets.only(bottom: 3),
+        child: ProduitCollecteCard(
+          libelle: "Suivi campagne",
+          localite: fiche.enqueteur?.commune?.nom ?? "N/A",
+          onEdit: () => _getResultFromNextCampagne(
+              context, fiche.enqueteCampagne!, fiche),
+          onDelete: () =>
+              _showDeleteConfirmSuiviCampagne(fiche.idSuiviCampagne!),
+        ));
+  }
+
   Future<void> handleDeleteMagasin(int id) async {
     await DatabaseService.delete(
       "PrixMagasins",
@@ -524,7 +626,16 @@ class _RejetPageState extends State<RejetPage> {
   Future<void> handleDeleteSuivi(int id) async {
     await DatabaseService.delete(
       "SuiviFluxs",
-      "idSuiviFlux",
+      "idSuivi",
+      id,
+    );
+    _fetchDataLocal();
+  }
+
+  Future<void> handleDeleteSuiviCampagne(int id) async {
+    await DatabaseService.delete(
+      "SuiviCampagnes",
+      "idSuiviCampagne",
       id,
     );
     _fetchDataLocal();
@@ -543,6 +654,29 @@ class _RejetPageState extends State<RejetPage> {
           TextButton(
             onPressed: () {
               handleDeleteSuivi(id);
+              _fetchDataLocal();
+              Navigator.pop(ctx);
+            },
+            child: const Text("Supprimer", style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteConfirmSuiviCampagne(int id) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Supprimer la fiche ?"),
+        content: const Text("Cette action est irréversible."),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text("Annuler")),
+          TextButton(
+            onPressed: () {
+              handleDeleteSuiviCampagne(id);
               _fetchDataLocal();
               Navigator.pop(ctx);
             },

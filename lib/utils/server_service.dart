@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:sim_tchad/core/constants/app_constants.dart';
 import 'package:sim_tchad/models/Enqueteur.dart';
 import 'package:sim_tchad/models/PrixMarche.dart';
+import 'package:sim_tchad/models/SuiviCampagne.dart';
 import 'package:sim_tchad/models/SuiviFlux.dart';
 import 'package:sim_tchad/models/prixMagasin.dart';
 import 'package:sim_tchad/utils/database_service.dart';
@@ -39,6 +40,16 @@ Future<bool> checkEnquetSuiviExists(String numFiche) async {
   try {
     final response =
         await http.get(Uri.parse("${API_URL}enquete-suivis/check/$numFiche"));
+    return response.statusCode == 200;
+  } catch (e) {
+    return false;
+  }
+}
+
+Future<bool> checkEnquetCampagneExists(String numFiche) async {
+  try {
+    final response = await http
+        .get(Uri.parse("${API_URL}enquete-campagnes/check/$numFiche"));
     return response.statusCode == 200;
   } catch (e) {
     return false;
@@ -216,6 +227,175 @@ Future<bool> syncFicheSuiviToServer(String numFiche) async {
   return success;
 }
 
+Future<bool> syncFicheCampagneToServer(String numFiche) async {
+  final localData = await DatabaseService.getFicheCampagneByNumFiche(numFiche);
+  if (localData == null) {
+    print("Aucune donnée à synchroniser.");
+    return false;
+  }
+
+  final ficheExiste = await checkEnquetSuiviExists(localData.numFiche!);
+
+  if (ficheExiste) {
+    print("La fiche ${localData.numFiche} existe déjà sur le serveur.");
+    return true;
+  }
+
+  bool success = false;
+  int attempt = 0;
+
+  while (!success && attempt < retry) {
+    try {
+      attempt++;
+
+      final formattedData = {
+        'numFiche': localData.numFiche,
+        'dateEnquete': localData.dateEnquete,
+        "enqueteur": {"idEnqueteur": localData.enqueteur.idEnqueteur},
+        'commune': {
+          "idCommune": localData.commune!.idCommune,
+        },
+      };
+
+      final response = await http.post(
+        Uri.parse("${API_URL}enquete-campagnes"),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(formattedData),
+      );
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        print("Fiche synchronisée avec succès : ${localData.numFiche}");
+        success = true;
+      } else {
+        print("Tentative $attempt/$retry échouée. Réponse : ${response.body}");
+      }
+    } catch (e) {
+      print("Erreur lors de l'envoi (Tentative $attempt/$retry) : $e");
+      if (attempt < retry) {
+        await Future.delayed(Duration(milliseconds: delay));
+      }
+    }
+  }
+
+  if (!success) {
+    print("Échec de la synchronisation pour ${localData.numFiche}");
+  }
+
+  return success;
+}
+
+Future<bool> syncDataSuiviCampagneByFicheServer(
+    Enqueteur enqueteur, String numFiche) async {
+  print("Sync en cours... $numFiche");
+
+  try {
+    // 1. Récupérer données locales
+    final localData = await DatabaseService.getCampagneByNum(numFiche);
+
+    if (localData.isEmpty) {
+      print("Aucune donnée à synchroniser.");
+      return false;
+    }
+
+    // 2. Vérifier si fiche existe
+    final ficheExists = await checkEnquetCampagneExists(numFiche);
+
+    if (!ficheExists) {
+      final success = await syncFicheCampagneToServer(numFiche);
+      if (!success) {
+        print("Échec synchro fiche");
+        return false;
+      }
+    }
+
+    // 3. Construire JSON
+    final data = localData.map((item) {
+      return {
+        "superficieHa": item.superficieHa ?? 0,
+        "quantiteProduit": item.quantiteProduit ?? 0,
+        "variete": item.variete ?? null,
+        "dateSemi": item.dateSemi ?? null,
+        "commentaire": item.commentaire ?? null,
+        "dateAjout": item.dateAjout ?? null,
+        "uniteMesure": item.uniteMesure ?? null,
+        "produit": {
+          "idProduit": item.produit?.idProduit,
+          "nomProduit": item.produit?.nomProduit,
+        },
+        "enqueteur": {
+          "idEnqueteur": enqueteur.idEnqueteur,
+        },
+        "enqueteCampagne": item.enqueteCampagne != null
+            ? {"numFiche": item.enqueteCampagne!.numFiche}
+            : null,
+        "commune": item.commune != null
+            ? {"idCommune": item.commune!.idCommune}
+            : null,
+        "campagne": item.campagne != null
+            ? {"idCampagne": item.campagne!.idCampagne}
+            : null,
+        "bassinProduction": item.bassinProduction != null
+            ? {"idBassin": item.bassinProduction!.idBassin}
+            : null,
+      };
+    }).toList();
+
+    print("DATA ENVOYÉE: ${jsonEncode(data)}");
+
+    bool success = false;
+    int attempt = 0;
+
+    while (!success && attempt < retry) {
+      try {
+        attempt++;
+
+        final response = await http.post(
+          Uri.parse("${API_URL}suiviCampagnes/batch"),
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: jsonEncode(data), // ✅ ENVOI DU JSON
+        );
+
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          print("✅ Sync réussie");
+
+          // 🔥 SUPPRESSION DES DONNÉES LOCALES
+          for (var item in localData) {
+            await DatabaseService.delete(
+              "SuiviCampagne",
+              "idSuiviCampagne",
+              item.idSuiviCampagne,
+            );
+          }
+
+          // 🔥 SUPPRIMER LA FICHE
+          await DatabaseService.delete(
+            "EnqueteCampagne", // ✅ corrigé
+            "numFiche",
+            numFiche,
+          );
+
+          success = true;
+        } else {
+          print("❌ Tentative $attempt échouée: ${response.body}");
+        }
+      } catch (e) {
+        print("❌ Erreur tentative $attempt: $e");
+
+        if (attempt < retry) {
+          await Future.delayed(Duration(milliseconds: delay));
+        }
+      }
+    }
+
+    return success;
+  } catch (e) {
+    print("❌ Erreur générale: $e");
+    return false;
+  }
+}
+
 Future<bool> syncDataSuiviByFicheServer(
     Enqueteur enqueteur, String numFiche) async {
   print("Sync en cours... $numFiche");
@@ -264,6 +444,9 @@ Future<bool> syncDataSuiviByFicheServer(
         "enqueteur": {
           "idEnqueteur": enqueteur.idEnqueteur,
         },
+        "commune": item.commune != null
+            ? {"idCommune": item.commune!.idCommune}
+            : null,
         "enqueteSuivi": item.enqueteSuivi != null
             ? {"numFiche": item.enqueteSuivi!.numFiche}
             : null,
@@ -355,8 +538,8 @@ Future<bool> syncDataMarcheByFicheServer(
       print("prix ${double.tryParse(item.prixUnite1)}");
       return {
         "variete": item.variete ?? null,
-        "age": int.tryParse(item.age ?? "0"),
-        "prixUnite1": double.tryParse(item.prixUnite1),
+        // "age": int.tryParse(item.age ?? "0"),
+        "prixUnite1": double.tryParse(item.prixUnite1) ?? 0,
         "prixUnite2": int.tryParse(item.prixUnite2) ?? null,
         // "prixUnite3": int.tryParse(item.prixUnite3) ?? null,
         "uniteMesure2": item.uniteMesure2 ?? null,
@@ -386,7 +569,12 @@ Future<bool> syncDataMarcheByFicheServer(
         "marche": item.marche != null
             ? {
                 "idMarche": item.marche!.idMarche,
-                "nomMarche": item.marche!.nomMarche
+                "nomMarche": item.marche!.nomMarche,
+                "commune": {
+                  "idCommune": item.marche?.commune != null
+                      ? item.marche?.commune.idCommune
+                      : null
+                }
               }
             : null,
         "enqueteur": enqueteur != null ? enqueteur : null,
@@ -611,6 +799,106 @@ Future<bool> syncDataMagasinByFicheServer(
 }
 
 //update methode
+Future<bool> syncDataCampagneUpdateServer() async {
+  try {
+    final List<SuiviCampagne> localData =
+        await DatabaseService.getAllSuiviCampagnes();
+
+    if (localData.isEmpty) {
+      print("Aucune donnée à synchroniser.");
+      return false;
+    }
+
+    List<SuiviCampagne> failedItems = [];
+
+    for (final item in localData) {
+      bool success = false;
+      int attempt = 0;
+
+      while (!success && attempt < retry) {
+        print("item ${item.codeSuiviCampagne}");
+        try {
+          attempt++;
+
+          final formattedData = {
+            "superficieHa": item.superficieHa ?? 0,
+            "quantiteProduit": item.quantiteProduit ?? 0,
+            "variete": item.variete ?? null,
+            "dateSemi": item.dateSemi ?? null,
+            "dateModif": item.dateModif ?? null,
+            "commentaire": item.commentaire ?? null,
+            "dateAjout": item.dateAjout ?? null,
+            "uniteMesure": item.uniteMesure ?? null,
+            "produit": {
+              "idProduit": item.produit?.idProduit,
+              "nomProduit": item.produit?.nomProduit,
+            },
+            "enqueteCampagne": item.enqueteCampagne != null
+                ? {"numFiche": item.enqueteCampagne!.numFiche}
+                : null,
+            "campagne": item.campagne != null
+                ? {"idCampagne": item.campagne!.idCampagne}
+                : null,
+            "commune": item.commune != null
+                ? {"idCommune": item.commune!.idCommune}
+                : null,
+            "bassinProduction": item.bassinProduction != null
+                ? {"idBassin": item.bassinProduction!.idBassin}
+                : null,
+          };
+
+          final response = await http
+              .put(
+                Uri.parse("${API_URL}suiviCampagnes/${item.codeSuiviCampagne}"),
+                headers: {"Content-Type": "application/json"},
+                body: jsonEncode(formattedData),
+              )
+              .timeout(const Duration(seconds: 10));
+
+          if (response.statusCode >= 200 && response.statusCode < 300) {
+            print("✅ Donnée synchronisée avec succès : $formattedData");
+
+            await DatabaseService.delete(
+              "SuiviCampagnes",
+              "idSuiviCampagne",
+              item.idSuiviCampagne,
+            );
+
+            success = true;
+          } else {
+            print(
+                "⚠️ Tentative $attempt/$retry échouée. Réponse : ${response.body}");
+          }
+        } catch (e) {
+          print("❌ Erreur lors de l'envoi (Tentative $attempt/$retry) : $e");
+
+          if (attempt < retry) {
+            await Future.delayed(Duration(milliseconds: delay));
+          }
+        }
+      }
+
+      if (!success) {
+        failedItems.add(item);
+      }
+    }
+
+    // 🔥 Gestion des échecs
+    if (failedItems.isNotEmpty) {
+      print(
+          "❌ ${failedItems.length} élément(s) non synchronisé(s). Réessai plus tard.");
+    } else {
+      // await deleteAllAgentReject();
+      print("✅ Toutes les données ont été synchronisées !");
+    }
+
+    return failedItems.isEmpty;
+  } catch (e) {
+    print("❌ Erreur générale de synchronisation : $e");
+    return false;
+  }
+}
+
 Future<bool> syncDataAgentUpdateServer() async {
   try {
     final List<SuiviFlux> localData = await DatabaseService.getAllSuivi();

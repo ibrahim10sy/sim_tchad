@@ -7,7 +7,9 @@ import 'package:sim_tchad/models/EnqueteCampagne.dart';
 import 'package:sim_tchad/models/Enqueteur.dart';
 import 'package:sim_tchad/services/auth_service.dart';
 import 'package:sim_tchad/utils/database_service.dart';
+import 'package:sim_tchad/utils/server_service.dart';
 import 'package:sim_tchad/views/screen/add_campagne.dart';
+import 'package:sim_tchad/views/screen/detail_campagne.dart';
 import 'package:sim_tchad/views/widgets/FicheCollecteCard.dart';
 
 class CollecteCampagne extends StatefulWidget {
@@ -17,9 +19,9 @@ class CollecteCampagne extends StatefulWidget {
   @override
   State<CollecteCampagne> createState() => _CollecteCampagneState();
 }
-
+ 
 class _CollecteCampagneState extends State<CollecteCampagne> {
-   bool isLoading = false;
+  bool isLoading = false;
   List<EnqueteCampagne> fiches = [];
   String dateEnquete = DateFormat('dd/MM/yyyy').format(DateTime.now());
   DateTime selectedDate = DateTime.now();
@@ -51,8 +53,8 @@ class _CollecteCampagneState extends State<CollecteCampagne> {
     if (!mounted) return;
     setState(() => isLoading = true);
     try {
-      final data =
-          await DatabaseService.getFicheByCampagne(widget.enqueteur!.commune!.nom);
+      final data = await DatabaseService.getFicheByCampagne(
+          widget.enqueteur!.commune!.nom);
       if (!mounted) return;
       setState(() {
         fiches = data.map((e) => EnqueteCampagne.fromJson(e)).toList();
@@ -71,7 +73,7 @@ class _CollecteCampagneState extends State<CollecteCampagne> {
           .addPostFrameCallback((_) => _openCreateFicheBottomSheet());
     }
   }
-  
+
   void _openCreateFicheBottomSheet() {
     numFiche = generateNumFiche();
 
@@ -246,23 +248,22 @@ class _CollecteCampagneState extends State<CollecteCampagne> {
 
   Future<void> _getResultFromNextScreens(
       BuildContext context, EnqueteCampagne en) async {
-    // final result = await Navigator.push(
-    //     context,
-    //     MaterialPageRoute(
-    //         builder: (_) => DetailSuivi(
-    //               enqueteSuivi: en,
-    //             )));
-    // log(result.toString());
-    // if (result == true) {
-    //   print("Rafraichissement en cours");
+    final result = await Navigator.push(
+        context,
+        MaterialPageRoute(
+            builder: (_) => DetailCampagne(
+                  enqueteCampagne: en,
+                )));
+    log(result.toString());
+    if (result == true) {
+      print("Rafraichissement en cours");
 
-    //   if (!mounted) return;
-    //   await _fetchDataLocal();
-    // }
+      if (!mounted) return;
+      await _fetchDataLocal();
+    }
   }
-  
 
-   Future<void> selectDate({Function(void Function())? setInternalState}) async {
+  Future<void> selectDate({Function(void Function())? setInternalState}) async {
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: selectedDate,
@@ -304,7 +305,7 @@ class _CollecteCampagneState extends State<CollecteCampagne> {
   Future<void> handleSync(String numFiche) async {
     setState(() => isLoad = true);
     try {
-      // await syncDataSuByFicheServer(widget.enqueteur!, numFiche);
+      await syncDataSuiviCampagneByFicheServer(widget.enqueteur!, numFiche);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -330,8 +331,8 @@ class _CollecteCampagneState extends State<CollecteCampagne> {
       await _fetchDataLocal();
     }
   }
-  
- @override
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.lightGrey,

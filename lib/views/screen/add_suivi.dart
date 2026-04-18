@@ -70,7 +70,7 @@ class _AddSuiviState extends State<AddSuivi> {
             selectedCategorie!.idCategorieProduit)
         .toList();
   }
-
+ 
   @override
   void initState() {
     super.initState();
@@ -407,14 +407,14 @@ class _AddSuiviState extends State<AddSuivi> {
       _buildTextField(
         controller: fluxEntrantTonneCont,
         isRequired: true,
-        label: "Flux entrant (tonne)",
+        label: "Flux entrant",
         icon: Icons.call_received,
         isNumber: true,
       ),
 
       _buildTextField(
         controller: fluxSortantTonneCont,
-        label: "Flux sortant (tonne)",
+        label: "Flux sortant",
         isRequired: true,
         icon: Icons.call_made,
         isNumber: true,

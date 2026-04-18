@@ -19,7 +19,7 @@ class UpdateSuivi extends StatefulWidget {
 
   @override
   State<UpdateSuivi> createState() => _UpdateSuiviState();
-}
+} 
 
 class _UpdateSuiviState extends State<UpdateSuivi> {
   bool isLoading = false;

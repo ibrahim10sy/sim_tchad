@@ -19,6 +19,32 @@ class FicheCollecteCard extends StatelessWidget {
     this.onSync,
   });
 
+  PopupMenuItem<String> _buildMenuItem({
+    required String value,
+    required IconData icon,
+    required String text,
+    required Color color,
+  }) {
+    return PopupMenuItem<String>(
+      value: value,
+      height: 40, // Hauteur contrôlée
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: color),
+          const SizedBox(width: 12),
+          Text(
+            text,
+            style: TextStyle(
+              color: color,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -72,46 +98,49 @@ class FicheCollecteCard extends StatelessWidget {
                             icon:
                                 const Icon(Icons.more_vert, color: Colors.grey),
                             padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
+                            color: Colors.white,
+                            surfaceTintColor: Colors
+                                .white, // Empêche la teinte violette de Material 3
+                            elevation: 4,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(
+                                  12), // Bords arrondis plus modernes
+                            ),
+                            constraints: const BoxConstraints(
+                              minWidth:
+                                  180, // Largeur minimale pour éviter que le menu soit trop étroit
+                            ),
                             onSelected: (value) {
-                              if (value == 'sync') {
-                                onSync?.call();
-                              } else if (value == 'delete') {
-                                onDelete?.call();
+                              switch (value) {
+                                case 'sync':
+                                  onSync?.call();
+                                  break;
+                                case 'delete':
+                                  onDelete?.call();
+                                  break;
                               }
                             },
                             itemBuilder: (BuildContext context) => [
-                              // L'élément "Synchroniser" n'apparaît que si onSync est fourni
                               if (onSync != null)
-                                const PopupMenuItem<String>(
+                                _buildMenuItem(
                                   value: 'sync',
-                                  child: Row(
-                                    children: [
-                                      Icon(Icons.sync,
-                                          size: 20, color: Colors.black87),
-                                      SizedBox(width: 10),
-                                      Text("Synchroniser"),
-                                    ],
-                                  ),
+                                  icon: Icons.sync_rounded,
+                                  text: "Envoyer les données",
+                                  color: Colors.black87,
                                 ),
-
-                              // L'élément "Supprimer" n'apparaît que si onDelete est fourni
+                              if (onSync != null && onDelete != null)
+                                const PopupMenuDivider(
+                                    height:
+                                        1), // Séparateur subtil entre les actions
                               if (onDelete != null)
-                                const PopupMenuItem<String>(
+                                _buildMenuItem(
                                   value: 'delete',
-                                  child: Row(
-                                    children: [
-                                      Icon(Icons.delete_outline,
-                                          size: 20, color: Colors.redAccent),
-                                      SizedBox(width: 10),
-                                      Text("Supprimer",
-                                          style: TextStyle(
-                                              color: Colors.redAccent)),
-                                    ],
-                                  ),
+                                  icon: Icons.delete_outline_rounded,
+                                  text: "Supprimer la fiche et ses données",
+                                  color: Colors.redAccent,
                                 ),
                             ],
-                          ),
+                          )
                       ],
                     ),
                     const SizedBox(height: 4),

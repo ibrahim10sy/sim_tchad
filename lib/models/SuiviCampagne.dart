@@ -23,10 +23,9 @@ class SuiviCampagne {
   String? latitude;
   String? longitude;
   String? uniteMesure;
-  List<Produit>? produit;
+  Produit? produit;
   BassinProduction? bassinProduction;
   Campagne? campagne;
-  Acteur? acteur;
   Enqueteur? enqueteur;
   Commune? commune;
   EnqueteCampagne? enqueteCampagne;
@@ -48,7 +47,6 @@ class SuiviCampagne {
     this.produit,
     this.bassinProduction,
     this.campagne,
-    this.acteur,
     this.enqueteur,
     this.commune,
     this.enqueteCampagne,
@@ -71,10 +69,10 @@ class SuiviCampagne {
       statut: json['statut'],
       latitude: json['latitude'],
       longitude: json['longitude'],
-
-      produit: (json['produit'] as List?)
-          ?.map((e) => Produit.fromJson(e))
-          .toList(),
+      
+      produit: json['produit'] != null
+          ? Produit.fromJson(json['produit'])
+          : null,
 
       bassinProduction: json['bassinProduction'] != null
           ? BassinProduction.fromJson(json['bassinProduction'])
@@ -83,10 +81,6 @@ class SuiviCampagne {
       campagne: json['campagne'] != null
           ? Campagne.fromJson(json['campagne'])
           : null,
-
-      acteur:
-          json['acteur'] != null ? Acteur.fromJson(json['acteur']) : null,
-
       enqueteur: json['enqueteur'] != null
           ? Enqueteur.fromJson(json['enqueteur'])
           : null,
@@ -103,22 +97,19 @@ class SuiviCampagne {
   /// 🔹 TO JSON (API)
   Map<String, dynamic> toJson() {
     return {
-      'codeSuiviCampagne': codeSuiviCampagne,
       'commentaire': commentaire,
       'dateSemi': dateSemi,
       'superficieHa': superficieHa,
       'quantiteProduit': quantiteProduit,
       'variete': variete,
       'dateAjout': dateAjout,
-      'dateModif': dateModif,
-      'statut': statut,
-      'latitude': latitude,
-      'longitude': longitude,
-      "uniteMesure": uniteMesure,
-      'produit': produit != null
-          ? produit!.map((e) => e.toJson()).toList()
-          : null,
 
+      "uniteMesure": uniteMesure,
+  
+      'produit': produit != null
+          ? jsonEncode(produit!.toJson())
+          : null,
+  
       'bassinProduction': bassinProduction != null
           ? jsonEncode(bassinProduction!.toJson())
           : null,
@@ -126,10 +117,9 @@ class SuiviCampagne {
       'campagne':
           campagne != null ? jsonEncode(campagne!.toJson()) : null,
 
-      'acteur': acteur != null ? jsonEncode(acteur!.toJson()) : null,
 
-      'enqueteur':
-          enqueteur != null ? jsonEncode(enqueteur!.toJson()) : null,
+      // 'enqueteur':
+      //     enqueteur != null ? jsonEncode(enqueteur!.toJson()) : null,
 
       'commune':
           commune != null ? jsonEncode(commune!.toJson()) : null,
@@ -156,8 +146,9 @@ class SuiviCampagne {
       'latitude': latitude,
       'longitude': longitude,
       'uniteMesure':uniteMesure,
+    
       'produit': produit != null
-          ? jsonEncode(produit!.map((e) => e.toJson()).toList())
+          ? jsonEncode(produit!.toJson())
           : null,
 
       'bassinProduction': bassinProduction != null
@@ -167,8 +158,6 @@ class SuiviCampagne {
       'campagne':
           campagne != null ? jsonEncode(campagne!.toJson()) : null,
 
-      'acteur': acteur != null ? jsonEncode(acteur!.toJson()) : null,
-
       'enqueteur':
           enqueteur != null ? jsonEncode(enqueteur!.toJson()) : null,
 
@@ -177,7 +166,7 @@ class SuiviCampagne {
 
       'enqueteCampagne': enqueteCampagne != null
           ? jsonEncode(enqueteCampagne!.toJson())
-          : null,
+          : null
     };
   }
 
@@ -199,11 +188,9 @@ class SuiviCampagne {
       longitude: map['longitude'],
       uniteMesure: map['uniteMesure'],
       produit: map['produit'] != null
-          ? (jsonDecode(map['produit']) as List)
-              .map((e) => Produit.fromJson(e))
-              .toList()
+          ? Produit.fromJson(
+              jsonDecode(map['produit']))
           : null,
-
       bassinProduction: map['bassinProduction'] != null
           ? BassinProduction.fromJson(
               jsonDecode(map['bassinProduction']))
@@ -211,10 +198,6 @@ class SuiviCampagne {
 
       campagne: map['campagne'] != null
           ? Campagne.fromJson(jsonDecode(map['campagne']))
-          : null,
-
-      acteur: map['acteur'] != null
-          ? Acteur.fromJson(jsonDecode(map['acteur']))
           : null,
 
       enqueteur: map['enqueteur'] != null

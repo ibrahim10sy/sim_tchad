@@ -1,41 +1,35 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:sim_tchad/core/constants/app_colors.dart';
 import 'package:sim_tchad/models/BassinProduction.dart';
 import 'package:sim_tchad/models/Campagne.dart';
 import 'package:sim_tchad/models/CategorieProduit.dart';
 import 'package:sim_tchad/models/Commune.dart';
 import 'package:sim_tchad/models/EnqueteCampagne.dart';
+import 'package:sim_tchad/models/EnqueteSuivi.dart';
 import 'package:sim_tchad/models/Enqueteur.dart';
 import 'package:sim_tchad/models/NiveauApprovisionnement.dart';
 import 'package:sim_tchad/models/Produit.dart';
 import 'package:sim_tchad/models/SuiviCampagne.dart';
+import 'package:sim_tchad/models/SuiviFlux.dart';
 import 'package:sim_tchad/models/UniteConventionnelle.dart';
 import 'package:sim_tchad/models/Variete.dart';
 import 'package:sim_tchad/services/auth_service.dart';
 import 'package:sim_tchad/utils/database_service.dart';
 import 'package:sim_tchad/views/widgets/buildSelectField.dart';
 import 'package:sim_tchad/views/widgets/showCustomSelector.dart';
-import 'dart:developer';
 
-class AddCampagne extends StatefulWidget {
-  final Commune? commune;
-  final EnqueteCampagne enqueteCampagne;
-  bool? isEdit;
-  SuiviCampagne? suiviCampagne;
-
-  AddCampagne(
-      {super.key,
-      required this.commune,
-      this.isEdit,
-      this.suiviCampagne,
-      required this.enqueteCampagne});
+class UpdateCampagne extends StatefulWidget {
+  Commune? commune;
+  EnqueteCampagne? enqueteCampagne;
+  SuiviCampagne? suivi;
+  UpdateCampagne(
+      {super.key, this.commune, required this.enqueteCampagne, this.suivi});
 
   @override
-  State<AddCampagne> createState() => _AddCampagneState();
+  State<UpdateCampagne> createState() => _UpdateCampagneState();
 }
 
-class _AddCampagneState extends State<AddCampagne> {
+class _UpdateCampagneState extends State<UpdateCampagne> {
   final TextEditingController uniteMesureController = TextEditingController();
   final TextEditingController varieteController = TextEditingController();
   final TextEditingController dateSemiController = TextEditingController();
@@ -62,8 +56,6 @@ class _AddCampagneState extends State<AddCampagne> {
   BassinProduction? selectedBassin;
   Enqueteur? enqueteur;
   String? selectedUniteMesure;
-  String dateEnquete = DateFormat('dd/MM/yyyy').format(DateTime.now());
-  DateTime? selectedDate;
 
   // Getter pour obtenir uniquement les produits de la catégorie sélectionnée
   List<Produit> get filteredProduits {
@@ -79,8 +71,8 @@ class _AddCampagneState extends State<AddCampagne> {
   void initState() {
     super.initState();
     loadUser();
-    if (widget.isEdit == true && widget.suiviCampagne != null) {
-      p = widget.suiviCampagne!;
+    if (widget.suivi != null) {
+      p = widget.suivi!;
 
       selectedBassin = p!.bassinProduction;
       selectedProduit = p!.produit;
@@ -145,7 +137,7 @@ class _AddCampagneState extends State<AddCampagne> {
             catData.map((m) => CategorieProduit.fromJson(m)).toList();
       });
 
-      if (widget.isEdit == true && p != null) {
+      if (p != null) {
         setState(() {
           // ✅ Variété
           if (p!.variete != null) {
@@ -175,53 +167,36 @@ class _AddCampagneState extends State<AddCampagne> {
   }
 
   Future<void> handleSubmit() async {
-    if (selectedProduit == null ||
-        enqueteur?.commune == null ||
-        selectedCampagne == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text("Veuillez renseigné tout les champs obligatoire")),
-      );
-      return;
-    }
-
     setState(() => isLoading = true);
 
     try {
       final data = SuiviCampagne(
         commentaire: safeText(commentaireController) ?? "",
         dateSemi: safeText(dateSemiController) ?? "",
-        superficieHa: double.tryParse(superficieController.text) ?? null,
-        quantiteProduit: double.tryParse(quantiteController.text) ?? null,
+        superficieHa: double.tryParse(superficieController.text),
+        quantiteProduit: double.tryParse(quantiteController.text),
         variete: selectedVariete?.libelle ?? "",
         uniteMesure: selectedUnite?.libelle ?? "",
         produit: selectedProduit,
         bassinProduction: selectedBassin ?? null,
         campagne: selectedCampagne,
-        enqueteur: enqueteur,
         commune: enqueteur!.commune,
-        dateAjout: DateTime.now().toString(),
+        dateModif: DateTime.now().toString(),
         enqueteCampagne: widget.enqueteCampagne,
       );
 
       print(data.toJson());
 
-      if (widget.isEdit == true) {
-        await DatabaseService.update(
-          "SuiviCampagne",
-          data.toJson(),
-          "idSuiviCampagne",
-          p!.idSuiviCampagne,
-        );
-      } else {
-        await DatabaseService.insert("SuiviCampagne", data.toJson());
-      }
+      await DatabaseService.update(
+        "SuiviCampagnes",
+        data.toJson(),
+        "idSuiviCampagne",
+        p!.idSuiviCampagne,
+      );
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(widget.isEdit!
-              ? "Suivi campagne modifié avec succès"
-              : "Suivi campagne enregistré avec succès"),
+          content: Text("Suivi campagne modifié avec succès"),
         ),
       );
 
@@ -242,13 +217,8 @@ class _AddCampagneState extends State<AddCampagne> {
     return Scaffold(
       backgroundColor: AppColors.lightGrey,
       appBar: AppBar(
-        title: widget.isEdit == true
-            ? Text("Modification",
-                style:
-                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 16))
-            : Text("Suivi des campagnes",
-                style:
-                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        title: Text("Modification",
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
         backgroundColor: AppColors.institutionalGreen,
         foregroundColor: Colors.white,
         elevation: 0,
@@ -319,19 +289,6 @@ class _AddCampagneState extends State<AddCampagne> {
   /// ---------------- STOCK ----------------
   Widget _buildSupplySection() {
     return _buildCardWrapper([
-      // SelectField(
-      //   label: "Niveau d'approvisionnement",
-      //   icon: Icons.trending_up,
-      //   value: selectedNiveau?.libelle ?? "",
-      //   onTap: () => SelectorBottomSheet.show<NiveauApprovisionnement>(
-      //     context: context,
-      //     title: "Niveau d'Appro.",
-      //     items: niveaux,
-      //     itemLabel: (n) => n.libelle ?? "",
-      //     selectedItem: selectedNiveau,
-      //     onSelected: (n) => setState(() => selectedNiveau = n),
-      //   ),
-      // ),
       SelectField(
         label: "Variété",
         icon: Icons.category_outlined,
@@ -380,6 +337,7 @@ class _AddCampagneState extends State<AddCampagne> {
       SelectField(
         label: "Bassin de production",
         icon: Icons.map_outlined,
+        isRequired: true,
         value: selectedBassin?.libelle ?? "",
         onTap: () => SelectorBottomSheet.show<BassinProduction>(
           context: context,
@@ -390,7 +348,7 @@ class _AddCampagneState extends State<AddCampagne> {
           onSelected: (b) => setState(() => selectedBassin = b),
         ),
       ),
-      // const SizedBox(height: 10),
+      const SizedBox(height: 10),
       SelectField(
         label: "Campagne agricole",
         icon: Icons.calendar_today,
@@ -405,27 +363,6 @@ class _AddCampagneState extends State<AddCampagne> {
           itemLabel: (c) => "${c.anneeDebut} - ${c.anneeFin}",
           selectedItem: selectedCampagne,
           onSelected: (c) => setState(() => selectedCampagne = c),
-        ),
-      ),
-
-      _buildTextField(
-        controller: superficieController,
-        label: "Superficie",
-        icon: Icons.straighten,
-        isNumber: true,
-      ),
-
-      InkWell(
-        onTap: () async {
-          await selectDate();
-          // setInternalState(
-          //     () {}); // Rafraîchit le texte dans le bottom sheet
-        },
-        child: _buildInfoTile(
-          label: "Date de semence",
-          value: dateEnquete,
-          icon: Icons.calendar_today_rounded,
-          isAction: true,
         ),
       ),
     ]);
@@ -443,48 +380,10 @@ class _AddCampagneState extends State<AddCampagne> {
             padding: const EdgeInsets.symmetric(vertical: 14),
           ),
           child: Text(
-            widget.isEdit! ? "Modifier" : "Enregistrer",
+            "Modifier",
             style: const TextStyle(fontSize: 16, color: Colors.white),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildInfoTile(
-      {required String label,
-      required String value,
-      required IconData icon,
-      bool isAction = false}) {
-    return Container(
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: AppColors.lightGrey,
-        borderRadius: BorderRadius.circular(12),
-        border: isAction
-            ? Border.all(color: AppColors.primaryGreen.withOpacity(0.3))
-            : null,
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: AppColors.institutionalGreen),
-          const SizedBox(width: 15),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label,
-                  style: const TextStyle(fontSize: 12, color: Colors.grey)),
-              Text(value,
-                  style: const TextStyle(
-                      fontSize: 15, fontWeight: FontWeight.bold)),
-            ],
-          ),
-          if (isAction) ...[
-            const Spacer(),
-            const Icon(Icons.edit_calendar_rounded,
-                size: 18, color: AppColors.primaryGreen),
-          ]
-        ],
       ),
     );
   }
@@ -580,46 +479,6 @@ class _AddCampagneState extends State<AddCampagne> {
             const EdgeInsets.symmetric(vertical: 12, horizontal: 15),
       ),
     );
-  }
-
-  Future<void> selectDate({Function(void Function())? setInternalState}) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: selectedDate,
-      firstDate: DateTime(2010),
-      lastDate: DateTime(2300),
-      // Personnalisation du thème pour coller à la charte
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: AppColors.institutionalGreen, // Entête
-              onPrimary: Colors.white, // Texte entête
-              onSurface: AppColors.darkGrey, // Texte des jours
-            ),
-            textButtonTheme: TextButtonThemeData(
-              style:
-                  TextButton.styleFrom(foregroundColor: AppColors.primaryGreen),
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-
-    if (picked != null && picked != selectedDate) {
-      // 1. Mise à jour de l'état principal de la page
-      setState(() {
-        selectedDate = picked;
-        dateEnquete = DateFormat('dd/MM/yyyy').format(picked);
-        dateSemiController.text = dateEnquete;
-      });
-
-      // 2. Mise à jour de l'état interne du Bottom Sheet si fourni
-      if (setInternalState != null) {
-        setInternalState(() {});
-      }
-    }
   }
 
   Widget _buildFicheHeader() {

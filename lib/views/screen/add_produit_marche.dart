@@ -171,7 +171,7 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
 
   void _initData() {
     p = widget.prixMarche!;
-    _prix1Controller.text = p!.prixUnite1 ?? "";
+    _prix1Controller.text = p!.prixUnite1 ?? "0";
     _prix2Controller.text = p!.prixUnite2 ?? "";
     // _prix3Controller.text = p!.prixUnite3 ?? "";
     prixTransportController.text = p!.prixTransport ?? "";
@@ -481,11 +481,6 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
           );
         },
       ),
-      _buildTextField(
-          controller: ageController,
-          label: "Âge (jours)",
-          icon: Icons.history,
-          isNumber: true),
     ]);
   }
 
@@ -522,7 +517,7 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
       ),
       _buildTextField(
         controller: _prix1Controller,
-        isRequired: true,
+        // isRequired: true,
         enabled: false,
         label: "Equivalence en ${selectedUnite1?.conversion ?? "unité"}",
         icon: Icons.payments_outlined,
@@ -836,49 +831,6 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
     );
   }
 
-  // Widget _buildTextField({
-  //   required TextEditingController controller,
-  //   required String label,
-  //   required IconData icon,
-  //   bool isNumber = false,
-  //   bool isRequired = false, // Nouveau paramètre
-  //   String? suffix,
-  //   int maxLines = 1,
-  // }) {
-  //   return TextFormField(
-  //     controller: controller,
-  //     keyboardType: isNumber ? TextInputType.number : TextInputType.text,
-  //     maxLines: maxLines,
-  //     decoration: InputDecoration(
-  //       // On crée le label avec l'astérisque si nécessaire
-  //       label: RichText(
-  //         text: TextSpan(
-  //           text: label,
-  //           style: const TextStyle(
-  //               color: Colors.black, fontWeight: FontWeight.bold, fontSize: 12),
-  //           children: [
-  //             if (isRequired)
-  //               const TextSpan(
-  //                 text: ' *',
-  //                 style:
-  //                     TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-  //               ),
-  //           ],
-  //         ),
-  //       ),
-  //       prefixIcon: Icon(icon, color: AppColors.primaryGreen, size: 20),
-  //       suffixText: suffix,
-  //       filled: true,
-  //       fillColor: AppColors.lightGrey.withOpacity(0.5),
-  //       border: OutlineInputBorder(
-  //           borderRadius: BorderRadius.circular(10),
-  //           borderSide: BorderSide.none),
-  //       contentPadding:
-  //           const EdgeInsets.symmetric(vertical: 12, horizontal: 15),
-  //     ),
-  //   );
-  // }
-
   Widget _buildDropdown<T>({
     required String label,
     required IconData icon,
@@ -992,10 +944,10 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
 
     try {
       calculateEquivalencePrice();
-      print("prix m  ${_prix1Controller.text}");
+      // print("prix m  ${_prix1Controller.text}");
       final data = PrixMarche(
         variete: selectedVariete?.libelle ?? "",
-        prixUnite1: safeText(_prix1Controller)!,
+        prixUnite1: safeText(_prix1Controller) ?? "0",
         prixUnite2: safeText(_prix2Controller)!,
         // prixUnite3: safeText(_prix3Controller) ?? "",
         uniteMesure2: selectedUniteMesure ?? "",
@@ -1014,7 +966,6 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
         fournisseur: selectedFournisseur!,
         clientPrincipal: selectedClient!,
         niveau: selectedNiveau,
-        age: safeText(ageController) ?? "",
         observation: safeText(observationController) ?? "",
         image: pathImageToSave,
       );

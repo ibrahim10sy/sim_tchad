@@ -263,6 +263,24 @@ class DatabaseService {
       return [];
     }
   }
+  
+  static Future<List<PrixMarche>> getAllPrixMarche(
+      [List<String>? relationFields]) async {
+    final db = await openDatabaseConnection();
+    if (db == null) return [];
+
+    try {
+      final rows = await db.rawQuery('SELECT * FROM PrixMarche');
+
+      return rows
+          .map(
+              (row) => PrixMarche.fromMap(decodeRelations(row, relationFields)))
+          .toList();
+    } catch (error) {
+      print("Erreur marche $error");
+      return [];
+    }
+  }
 
   static Future<List<PrixMagasin>> getAllPrixMagasins(
       [List<String>? relationFields]) async {
@@ -271,6 +289,26 @@ class DatabaseService {
 
     try {
       final rows = await db.rawQuery('SELECT * FROM PrixMagasins');
+      print(rows
+          .map((row) =>
+              PrixMagasin.fromMap(decodeRelations(row, relationFields)))
+          .toList());
+      return rows
+          .map((row) =>
+              PrixMagasin.fromMap(decodeRelations(row, relationFields)))
+          .toList();
+    } catch (error) {
+      print("Erreur magasin $error");
+      return [];
+    }
+  }
+  static Future<List<PrixMagasin>> getAllPrixMagasin(
+      [List<String>? relationFields]) async {
+    final db = await openDatabaseConnection();
+    if (db == null) return [];
+
+    try {
+      final rows = await db.rawQuery('SELECT * FROM PrixMagasin');
       print(rows
           .map((row) =>
               PrixMagasin.fromMap(decodeRelations(row, relationFields)))
@@ -306,6 +344,27 @@ class DatabaseService {
     }
   }
 
+  static Future<List<SuiviCampagne>> getAllSuiviCampagne(
+      [List<String>? relationFields]) async {
+    final db = await openDatabaseConnection();
+    if (db == null) return [];
+
+    try {
+      final rows = await db.rawQuery('SELECT * FROM SuiviCampagne');
+      print(rows
+          .map((row) =>
+              SuiviCampagne.fromMap(decodeRelations(row, relationFields)))
+          .toList());
+      return rows
+          .map((row) =>
+              SuiviCampagne.fromMap(decodeRelations(row, relationFields)))
+          .toList();
+    } catch (error) {
+      print("Erreur magasin $error");
+      return [];
+    }
+  }
+
   static Future<List<SuiviFlux>> getAllSuivi(
       [List<String>? relationFields]) async {
     final db = await openDatabaseConnection();
@@ -313,6 +372,23 @@ class DatabaseService {
 
     try {
       final rows = await db.rawQuery('SELECT * FROM SuiviFluxs');
+
+      return rows
+          .map((row) => SuiviFlux.fromMap(decodeRelations(row, relationFields)))
+          .toList();
+    } catch (error) {
+      print("Erreur SuiviFlux $error");
+      return [];
+    }
+  }
+
+  static Future<List<SuiviFlux>> getAllSuivis(
+      [List<String>? relationFields]) async {
+    final db = await openDatabaseConnection();
+    if (db == null) return [];
+
+    try {
+      final rows = await db.rawQuery('SELECT * FROM SuiviFlux');
 
       return rows
           .map((row) => SuiviFlux.fromMap(decodeRelations(row, relationFields)))

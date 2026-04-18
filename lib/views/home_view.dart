@@ -4,7 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sim_tchad/core/constants/app_colors.dart';
 import 'package:sim_tchad/models/Enqueteur.dart';
+import 'package:sim_tchad/models/PrixMarche.dart';
+import 'package:sim_tchad/models/SuiviCampagne.dart';
+import 'package:sim_tchad/models/SuiviFlux.dart';
+import 'package:sim_tchad/models/prixMagasin.dart';
 import 'package:sim_tchad/services/auth_service.dart';
+import 'package:sim_tchad/utils/database_service.dart';
 import 'package:sim_tchad/utils/fecth_data.dart';
 import 'package:sim_tchad/views/acheve_page.dart';
 import 'package:sim_tchad/views/affect_page.dart';
@@ -25,12 +30,40 @@ class _HomePageState extends State<HomePage>
   Enqueteur? enqueteur;
   bool isLoadData = false;
   int syncProgress = 0;
+  List<PrixMarche> fiches = [];
+  List<PrixMagasin> fichesMagasin = [];
+  List<SuiviFlux> fichesSuivi = [];
+  List<SuiviCampagne> fichesSuiviCampagne = [];
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     loadUser();
+    _fetchDataLocal();
+  }
+
+  Future<void> _fetchDataLocal() async {
+    if (!mounted) return;
+    try {
+      final dataMarche = await DatabaseService.getAllPrixMarche();
+      final dataMagasin = await DatabaseService.getAllPrixMagasin();
+      final dataSuivi = await DatabaseService.getAllSuivis();
+      final dataCampagne = await DatabaseService.getAllSuiviCampagne();
+      print(dataMagasin.toList());
+
+      if (!mounted) return;
+      setState(() {
+        fiches = dataMarche;
+        fichesMagasin = dataMagasin;
+        fichesSuivi = dataSuivi;
+        fichesSuiviCampagne = dataCampagne;
+      });
+    } catch (e) {
+      debugPrint("Erreur : $e");
+    } finally {
+      if (!mounted) return;
+    }
   }
 
   Future<void> handleFetchData(
@@ -241,6 +274,11 @@ class _HomePageState extends State<HomePage>
       ],
       ["suivis/enqueteur/$codeEnqueteur/pending", "SuiviFluxs", "SuiviFlux"],
       [
+        "suiviCampagnes/enqueteur/$codeEnqueteur/pending",
+        "SuiviCampagnes",
+        "SuiviCampagnes"
+      ],
+      [
         "equivalences/commune/$idCommune",
         "EquivalenceUnite",
         "EquivalenceUnite"
@@ -313,6 +351,11 @@ class _HomePageState extends State<HomePage>
 
   @override
   Widget build(BuildContext context) {
+    bool toutEstVide = fiches.isEmpty &&
+        fichesMagasin.isEmpty &&
+        fichesSuivi.isEmpty &&
+        fichesSuiviCampagne.isEmpty;
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -461,28 +504,64 @@ class _HomePageState extends State<HomePage>
   }
 
   void _showLogoutDialog() {
+    // On recalcule l'état au moment du clic
+    bool toutEstVide = fiches.isEmpty &&
+        fichesMagasin.isEmpty &&
+        fichesSuivi.isEmpty &&
+        fichesSuiviCampagne.isEmpty;
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        title: const Text("Déconnexion",
-            style: TextStyle(fontWeight: FontWeight.bold)),
-        content: const Text(
-          "Voulez-vous vraiment quitter l'application ? Notez que toute déconnexion entraînera la suppression de toutes les données.",
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Annuler", style: TextStyle(color: Colors.grey)),
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              Icon(
+                toutEstVide
+                    ? Icons.logout_rounded
+                    : Icons.warning_amber_rounded,
+                color: toutEstVide ? Colors.black87 : Colors.orangeAccent,
+              ),
+              const SizedBox(width: 10),
+              const Text("Déconnexion",
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+            ],
           ),
-          TextButton(
-            onPressed: () => AuthService.logout(context),
-            child: const Text("Déconnexion",
-                style: TextStyle(
-                    color: Colors.redAccent, fontWeight: FontWeight.bold)),
+          content: Text(
+            "Attention : vous avez des fiches non synchronisées. Si vous vous déconnectez maintenant, ces données seront définitivement perdues.",
+            style: const TextStyle(fontSize: 15),
           ),
-        ],
-      ),
+          actionsPadding:
+              const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+          actions: [
+            // Bouton Annuler (toujours présent)
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child:
+                  const Text("ANNULER", style: TextStyle(color: Colors.black)),
+            ),
+
+            // Si des données existent, on propose de synchroniser d'abord
+
+            // Bouton de déconnexion (Rouge si danger, gris si safe)
+            TextButton(
+              onPressed: () => AuthService.logout(context),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.redAccent,
+              ),
+              child: Text(
+                "DÉCONNECTER QUAND MÊME",
+                style:
+                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
