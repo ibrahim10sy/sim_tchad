@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'package:sim_tchad/models/CaracteristiqueProduit.dart';
+import 'package:sim_tchad/models/DonneeSpecifique.dart';
 import 'package:sim_tchad/models/EnqueteCampagne.dart';
 import 'package:sim_tchad/models/EnqueteCollecte.dart';
 import 'package:sim_tchad/models/EnqueteMagasin.dart';
@@ -32,6 +34,28 @@ class DatabaseService {
 
     return result;
   }
+
+  Map<String, dynamic> prixdecodeRelations(
+  Map<String, dynamic> row,
+  List<String>? relationFields,
+) {
+  final data = Map<String, dynamic>.from(row);
+
+  // 👉 Décodage de donneeSpecifique
+  if (data['donneeSpecifique'] != null &&
+      data['donneeSpecifique'].toString().isNotEmpty) {
+    try {
+      data['donneeSpecifique'] = jsonDecode(data['donneeSpecifique']);
+    } catch (e) {
+      print("Erreur decode donneeSpecifique: $e");
+      data['donneeSpecifique'] = [];
+    }
+  } else {
+    data['donneeSpecifique'] = [];
+  }
+
+  return data;
+}
 
   /// ==========================
   /// INSERT
@@ -86,32 +110,77 @@ class DatabaseService {
     return null;
   }
 
+  static Future<List<CaracteristiqueProduit>> getCaracteristiquesByProduit(
+      String codeProduit) async {
+    final db = await openDatabaseConnection();
+    if (db == null) return [];
+
+    final result = await db.query(
+      "CaracteristiqueProduit",
+      where: "codeProduit = ?",
+      whereArgs: [codeProduit],
+    );
+
+    return result.map((e) => CaracteristiqueProduit.fromJson(e)).toList();
+  }
+
+  // static Future<void> clearAllData() async {
+  //   final db = await openDatabaseConnection();
+  //   if (db == null) return;
+
+  //   // Liste de toutes les tables à nettoyer
+  //   final tables = [
+  //     'EnqueteCollecte',
+  //     'EnqueteMagasin',
+  //     'EnqueteSuivi',
+  //     'PrixMarche',
+  //     'PrixMarches',
+  //     'PrixMagasins',
+  //     'PrixMagasin',
+  //     'SuiviFlux',
+  //     'SuiviFluxs',
+  //     'Magasin',
+  //     'Marche',
+  //   ];
+
+  //   for (var table in tables) {
+  //     await db.delete(table);
+  //   }
+
+  //   print("Toutes les tables locales ont été vidées.");
+  // }
+
   static Future<void> clearAllData() async {
     final db = await openDatabaseConnection();
     if (db == null) return;
 
-    // Liste de toutes les tables à nettoyer
-    final tables = [
-      'EnqueteCollecte',
-      'EnqueteMagasin',
-      'EnqueteSuivi',
-      'PrixMarche',
-      'PrixMarches',
-      'PrixMagasins',
-      'PrixMagasin',
-      'SuiviFlux',
-      'SuiviFluxs',
-      'Magasin',
-      'Marche',
-    ];
+    await db.transaction((txn) async {
+      await txn.rawDelete("DELETE FROM DonneeSpecifique");
+      await txn.rawDelete("DELETE FROM CaracteristiqueProduit");
 
-    for (var table in tables) {
-      await db.delete(table);
-    }
+      await txn.rawDelete("DELETE FROM PrixMarche");
+      await txn.rawDelete("DELETE FROM PrixMarches");
+      await txn.rawDelete("DELETE FROM PrixMagasin");
+      await txn.rawDelete("DELETE FROM PrixMagasins");
 
-    print("Toutes les tables locales ont été vidées.");
+      await txn.rawDelete("DELETE FROM EnqueteCollecte");
+      await txn.rawDelete("DELETE FROM EnqueteMagasin");
+      await txn.rawDelete("DELETE FROM EnqueteSuivi");
+      await txn.rawDelete("DELETE FROM EnqueteCampagne");
+
+      await txn.rawDelete("DELETE FROM SuiviFlux");
+      await txn.rawDelete("DELETE FROM SuiviFluxs");
+
+      await txn.rawDelete("DELETE FROM Magasin");
+      await txn.rawDelete("DELETE FROM Marche");
+      await txn.rawDelete("DELETE FROM Produit");
+      await txn.rawDelete("DELETE FROM Variete");
+      await txn.rawDelete("DELETE FROM Acteur");
+      await txn.rawDelete("DELETE FROM Commune");
+    });
+
+    print("🔥 DB complètement vidé (logout clean)");
   }
-
 
   /// ==========================
   /// UPDATE
@@ -150,7 +219,20 @@ class DatabaseService {
       whereArgs: [id],
     );
   }
+static Future<int?> deleteWhere(
+  String table,
+  String where,
+  List<dynamic> whereArgs,
+) async {
+  final db = await openDatabaseConnection();
+  if (db == null) return null;
 
+  return await db.delete(
+    table,
+    where: where,
+    whereArgs: whereArgs,
+  );
+}
   /// ==========================
   /// Méthodes pour fiches filtrées
   /// ==========================
@@ -209,7 +291,7 @@ class DatabaseService {
       return [];
     }
   }
-  
+
   static Future<List<Map<String, dynamic>>> getFicheByCampagne(String reference,
       [List<String>? relationFields]) async {
     final db = await openDatabaseConnection();
@@ -263,7 +345,7 @@ class DatabaseService {
       return [];
     }
   }
-  
+
   static Future<List<PrixMarche>> getAllPrixMarche(
       [List<String>? relationFields]) async {
     final db = await openDatabaseConnection();
@@ -302,6 +384,7 @@ class DatabaseService {
       return [];
     }
   }
+
   static Future<List<PrixMagasin>> getAllPrixMagasin(
       [List<String>? relationFields]) async {
     final db = await openDatabaseConnection();
@@ -322,7 +405,7 @@ class DatabaseService {
       return [];
     }
   }
-  
+
   static Future<List<SuiviCampagne>> getAllSuiviCampagnes(
       [List<String>? relationFields]) async {
     final db = await openDatabaseConnection();
@@ -413,7 +496,7 @@ class DatabaseService {
       return [];
     }
   }
-  
+
   static Future<List<Map<String, dynamic>>> getAllFicheCampagne(
       [List<String>? relationFields]) async {
     final db = await openDatabaseConnection();
@@ -459,7 +542,7 @@ class DatabaseService {
     }
   }
 
-  static Future<List<PrixMagasin>>  getPrixMagasinByNum(String numFiche,
+  static Future<List<PrixMagasin>> getPrixMagasinByNum(String numFiche,
       [List<String>? relationFields]) async {
     final db = await openDatabaseConnection();
     if (db == null) return [];
@@ -540,6 +623,29 @@ class DatabaseService {
       return [];
     }
   }
+
+  static Future<List<DonneeSpecifique>> getDonneesSpecifiquesByPrixMarche(
+  int idPrixMarche,
+) async {
+  final db = await openDatabaseConnection();
+  if (db == null) return [];
+
+  try {
+    final result = await db.query(
+      "DonneeSpecifique",
+      where: "idPrixMarche = ?",
+      whereArgs: [idPrixMarche],
+    );
+
+    return result
+        .map((e) => DonneeSpecifique.fromJson(e))
+        .toList();
+  } catch (e) {
+    print("Erreur getDonneesSpecifiquesByPrixMarche: $e");
+    return [];
+  }
+}
+
 
   static Future<List<SuiviFlux>> getSuiviByNum(String numFiche,
       [List<String>? relationFields]) async {

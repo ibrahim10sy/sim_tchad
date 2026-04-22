@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:sim_tchad/models/Acteur.dart';
+import 'package:sim_tchad/models/DonneeSpecifique.dart';
 import 'package:sim_tchad/models/EnqueteCollecte.dart';
 import 'package:sim_tchad/models/Enqueteur.dart';
 import 'package:sim_tchad/models/Marche.dart';
@@ -15,6 +16,7 @@ class PrixMarche {
   String prixUnite1;
   String prixUnite2;
   String? prixUnite3;
+  String? uniteMesure1;
   String? uniteMesure2;
   String? uniteMesure3;
   String? prixTransport;
@@ -40,6 +42,8 @@ class PrixMarche {
   Enqueteur? enqueteur;
   EnqueteCollecte? enqueteCollecte;
 
+  List<DonneeSpecifique>? donneesSpecifiques;
+
   PrixMarche({
     this.idPrixMarche,
     this.codePrix,
@@ -48,6 +52,7 @@ class PrixMarche {
     required this.prixUnite1,
     required this.prixUnite2,
     this.prixUnite3,
+    this.uniteMesure1,
     this.uniteMesure2,
     this.uniteMesure3,
     required this.prixTransport,
@@ -68,6 +73,7 @@ class PrixMarche {
     this.produit,
     this.niveau,
     this.marche,
+    this.donneesSpecifiques,
     this.commercant,
     this.enqueteur,
     this.enqueteCollecte,
@@ -83,6 +89,7 @@ class PrixMarche {
       'prixUnite1': prixUnite1,
       'prixUnite2': prixUnite2,
       'prixUnite3': prixUnite3,
+      'uniteMesure1': uniteMesure1,
       'uniteMesure2': uniteMesure2,
       'uniteMesure3': uniteMesure3,
       'prixTransport': prixTransport,
@@ -101,6 +108,15 @@ class PrixMarche {
       'latitude': latitude,
       'longitude': longitude,
       'commercant': commercant,
+
+      // ✅ JSON LISTE PROPRE
+      'donneesSpecifiques': donneesSpecifiques != null
+          ? jsonEncode(
+              donneesSpecifiques!.map((e) => e.toMap()).toList(),
+            )
+          : null,
+
+      // relations JSON STRING
       'produit': produit != null ? jsonEncode(produit!.toJson()) : null,
       'niveau': niveau != null ? jsonEncode(niveau!.toJson()) : null,
       'marche': marche != null ? jsonEncode(marche!.toJson()) : null,
@@ -120,6 +136,7 @@ class PrixMarche {
       prixUnite1: json['prixUnite1'] ?? "",
       prixUnite2: json['prixUnite2'] ?? "",
       prixUnite3: json['prixUnite3'],
+      uniteMesure1: json['uniteMesure1'],
       uniteMesure2: json['uniteMesure2'],
       uniteMesure3: json['uniteMesure3'],
       prixTransport: json['prixTransport'],
@@ -137,7 +154,11 @@ class PrixMarche {
       dateModif: json['dateModif'],
       latitude: json['latitude'],
       longitude: json['longitude'],
-
+      donneesSpecifiques: json['donneesSpecifiques'] != null
+          ? (json['donneesSpecifiques'] as List)
+              .map((e) => DonneeSpecifique.fromMap(e))
+              .toList()
+          : null,
       // Relations (objet JSON → objet Dart)
       produit:
           json['produit'] != null ? Produit.fromJson(json['produit']) : null,
@@ -162,44 +183,102 @@ class PrixMarche {
       codePrix: map['codePrix'],
       variete: map['variete'],
       age: map['age'],
-      prixUnite1: map['prixUnite1'],
-      prixUnite2: map['prixUnite2'],
+      prixUnite1: map['prixUnite1'] ?? "",
+      prixUnite2: map['prixUnite2'] ?? "",
       prixUnite3: map['prixUnite3'],
+      uniteMesure1: map['uniteMesure1'],
       uniteMesure2: map['uniteMesure2'],
       uniteMesure3: map['uniteMesure3'],
       prixTransport: map['prixTransport'],
       moyenTransport: map['moyenTransport'],
       image: map['image'],
-      fournisseur: map['fournisseur'],
+      fournisseur: map['fournisseur'] ?? "",
       qualiteProduit: map['qualiteProduit'],
-      clientPrincipal: map['clientPrincipal'],
+      clientPrincipal: map['clientPrincipal'] ?? "",
       uniteTransport: map['uniteTransport'],
       etatRoute: map['etatRoute'],
       origineProduit: map['origineProduit'],
-      observation: map['observation'],
+      observation: map['observation'] ?? "",
       statut: map['statut'],
       dateAjout: map['dateAjout'],
       dateModif: map['dateModif'],
       latitude: map['latitude'],
       longitude: map['longitude'],
+      commercant: map['commercant'],
+
+      // ✅ FIX IMPORTANT JSON STRING → LIST
+      donneesSpecifiques: map['donneesSpecifiques'] != null
+          ? (jsonDecode(map['donneesSpecifiques']) as List)
+              .map((e) => DonneeSpecifique.fromMap(e))
+              .toList()
+          : [],
+
       produit: map['produit'] != null
           ? Produit.fromJson(jsonDecode(map['produit']))
           : null,
+
       niveau: map['niveau'] != null
           ? NiveauApprovisionnement.fromJson(jsonDecode(map['niveau']))
           : null,
+
       marche: map['marche'] != null
           ? Marche.fromJson(jsonDecode(map['marche']))
           : null,
-      commercant: map['commercant'] != null ? map['commercant'] : null,
+
       enqueteur: map['enqueteur'] != null
           ? Enqueteur.fromJson(jsonDecode(map['enqueteur']))
           : null,
+
       enqueteCollecte: map['enqueteCollecte'] != null
           ? EnqueteCollecte.fromJson(jsonDecode(map['enqueteCollecte']))
           : null,
     );
   }
+  // factory PrixMarche.fromMap(Map<String, dynamic> map) {
+  //   return PrixMarche(
+  //     idPrixMarche: map['idPrixMarche'],
+  //     codePrix: map['codePrix'],
+  //     variete: map['variete'],
+  //     age: map['age'],
+  //     prixUnite1: map['prixUnite1'],
+  //     prixUnite2: map['prixUnite2'],
+  //     prixUnite3: map['prixUnite3'],
+  //     uniteMesure1: map['uniteMesure1'],
+  //     uniteMesure2: map['uniteMesure2'],
+  //     uniteMesure3: map['uniteMesure3'],
+  //     prixTransport: map['prixTransport'],
+  //     moyenTransport: map['moyenTransport'],
+  //     image: map['image'],
+  //     fournisseur: map['fournisseur'],
+  //     qualiteProduit: map['qualiteProduit'],
+  //     clientPrincipal: map['clientPrincipal'],
+  //     uniteTransport: map['uniteTransport'],
+  //     etatRoute: map['etatRoute'],
+  //     origineProduit: map['origineProduit'],
+  //     observation: map['observation'],
+  //     statut: map['statut'],
+  //     dateAjout: map['dateAjout'],
+  //     dateModif: map['dateModif'],
+  //     latitude: map['latitude'],
+  //     longitude: map['longitude'],
+  //     produit: map['produit'] != null
+  //         ? Produit.fromJson(jsonDecode(map['produit']))
+  //         : null,
+  //     niveau: map['niveau'] != null
+  //         ? NiveauApprovisionnement.fromJson(jsonDecode(map['niveau']))
+  //         : null,
+  //     marche: map['marche'] != null
+  //         ? Marche.fromJson(jsonDecode(map['marche']))
+  //         : null,
+  //     commercant: map['commercant'] != null ? map['commercant'] : null,
+  //     enqueteur: map['enqueteur'] != null
+  //         ? Enqueteur.fromJson(jsonDecode(map['enqueteur']))
+  //         : null,
+  //     enqueteCollecte: map['enqueteCollecte'] != null
+  //         ? EnqueteCollecte.fromJson(jsonDecode(map['enqueteCollecte']))
+  //         : null,
+  //   );
+  // }
 
   Map<String, dynamic> toJson() {
     return {
@@ -207,6 +286,7 @@ class PrixMarche {
       'prixUnite1': prixUnite1,
       'prixUnite2': prixUnite2,
       // 'prixUnite3': prixUnite3,
+      'uniteMesure1': uniteMesure1,
       'uniteMesure2': uniteMesure2,
       'uniteMesure3': uniteMesure3,
       'prixTransport': prixTransport,
@@ -221,6 +301,11 @@ class PrixMarche {
       'origineProduit': origineProduit,
       'observation': observation,
       'dateAjout': dateAjout,
+      //transormer en nullable
+      // 'donneesSpecifiques': donneesSpecifiques != null
+      //     ? donneesSpecifiques!.map((e) => e.toMap()).toList()
+      //     : null,
+
       // Relations encodées en JSON String
       'produit': produit != null ? jsonEncode(produit!.toJson()) : null,
       'niveau': niveau != null ? jsonEncode(niveau!.toJson()) : null,

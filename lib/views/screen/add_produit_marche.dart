@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:sim_tchad/core/constants/app_colors.dart';
 import 'package:sim_tchad/models/Acteur.dart';
+import 'package:sim_tchad/models/CaracteristiqueProduit.dart';
 import 'package:sim_tchad/models/CategorieProduit.dart';
+import 'package:sim_tchad/models/DonneeSpecifique.dart';
 import 'package:sim_tchad/models/EnqueteCollecte.dart';
 import 'package:sim_tchad/models/Enqueteur.dart';
 import 'package:sim_tchad/models/EquivalenceUnite.dart';
@@ -17,6 +19,7 @@ import 'package:intl/intl.dart';
 import 'package:sim_tchad/models/Produit.dart';
 import 'package:sim_tchad/models/UniteConventionnelle.dart';
 import 'package:sim_tchad/models/Variete.dart';
+import 'package:sim_tchad/utils/database_helper.dart';
 import 'package:sim_tchad/utils/database_service.dart';
 import 'package:sim_tchad/views/widgets/buildSelectField.dart';
 import 'package:sim_tchad/views/widgets/showCustomSelector.dart';
@@ -64,15 +67,17 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
   String? selectedActeur;
   UniteConventionnelle? selectedUnite2;
   String? selectedUniteMesure;
-  String? selectedUniteMesure2;
+  String? selectedUniteMesure1;
   Variete? selectedVariete;
   NiveauApprovisionnement? selectedNiveau;
   bool isLoading = false;
   List<NiveauApprovisionnement> niveaux = [];
+  List<CaracteristiqueProduit> caracteristiques = [];
   List<Produit> produit = [];
   List<Acteur> acteur = [];
   List<CategorieProduit> categorieProduit = [];
   List<UniteConventionnelle> unites = [];
+  List<DonneeSpecifique> data = [];
   List<Variete> variete = [];
   List<EquivalenceUnite> equivalences = [];
   PrixMarche? p;
@@ -112,7 +117,8 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
     "Détaillant",
     "Autre"
   ];
-
+  Map<int, TextEditingController> dynamicControllers = {};
+  List<CaracteristiqueProduit> caracteristiquesFiltrees = [];
   // Getter pour obtenir uniquement les produits de la catégorie sélectionnée
   List<Produit> get filteredProduits {
     if (selectedCategorie == null) return produit;
@@ -171,13 +177,14 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
 
   void _initData() {
     p = widget.prixMarche!;
+
     _prix1Controller.text = p!.prixUnite1 ?? "0";
     _prix2Controller.text = p!.prixUnite2 ?? "";
-    // _prix3Controller.text = p!.prixUnite3 ?? "";
     prixTransportController.text = p!.prixTransport ?? "";
     observationController.text = p!.observation ?? "";
     ageController.text = p!.age ?? "";
     _origineController.text = p!.origineProduit ?? "";
+
     selectedEtatRoute = p!.etatRoute;
     selectedFournisseur = p!.fournisseur;
     selectedClient = p!.clientPrincipal;
@@ -188,16 +195,52 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
     selectedActeur = p!.commercant;
     selectedNiveau = p!.niveau;
     selectedUniteMesure = p!.uniteMesure2 ?? "";
-    // selectedUniteMesure2 = p!.uniteMesure3 ?? "";
 
-    // --- Récupérer l'image existante ---
+    // -----------------------------
+    // 🔥 IMPORTANT : champs dynamiques
+    // -----------------------------
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fetchDonneesS(p!.idPrixMarche!);
+    });
+
+    // image
     if (p!.image != null &&
         p!.image!.isNotEmpty &&
         File(p!.image!).existsSync()) {
       existingImage = p!.image!;
-      pathImageToSave = p!.image; // chemin permanent à réutiliser
+      pathImageToSave = p!.image;
     }
   }
+
+  // void _initData() {
+  //   p = widget.prixMarche!;
+  //   _prix1Controller.text = p!.prixUnite1 ?? "0";
+  //   _prix2Controller.text = p!.prixUnite2 ?? "";
+  //   // _prix3Controller.text = p!.prixUnite3 ?? "";
+  //   prixTransportController.text = p!.prixTransport ?? "";
+  //   observationController.text = p!.observation ?? "";
+  //   ageController.text = p!.age ?? "";
+  //   _origineController.text = p!.origineProduit ?? "";
+  //   selectedEtatRoute = p!.etatRoute;
+  //   selectedFournisseur = p!.fournisseur;
+  //   selectedClient = p!.clientPrincipal;
+  //   selectedQualite = p!.qualiteProduit;
+  //   selectedUniteTransport = p!.uniteTransport ?? "";
+  //   selectedMoyenTransport = p!.moyenTransport ?? "";
+  //   selectedProduit = p!.produit;
+  //   selectedActeur = p!.commercant;
+  //   selectedNiveau = p!.niveau;
+  //   selectedUniteMesure = p!.uniteMesure2 ?? "";
+  //   // selectedUniteMesure1 = p!.uniteMesure3 ?? "";
+
+  //   // --- Récupérer l'image existante ---
+  //   if (p!.image != null &&
+  //       p!.image!.isNotEmpty &&
+  //       File(p!.image!).existsSync()) {
+  //     existingImage = p!.image!;
+  //     pathImageToSave = p!.image; // chemin permanent à réutiliser
+  //   }
+  // }
 
   void _deleteOldImageFile(String? path) {
     if (path != null && File(path).existsSync()) {
@@ -205,6 +248,57 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
     }
   }
 
+  Future<void> _fetchDonneesS(int idPrixMarche) async {
+    if (!mounted) return;
+
+    setState(() => isLoading = true);
+
+    try {
+      final List<DonneeSpecifique> localData =
+    await DatabaseService.getDonneesSpecifiquesByPrixMarche(idPrixMarche);
+
+      if (!mounted) return;
+
+      setState(() {
+  data = localData;
+});
+
+// 🔥 récupérer caractéristiques correspondantes AVANT build
+final caracteristiques =
+    await DatabaseService.getCaracteristiquesByProduit(p!.produit!.codeProduit);
+
+// 🔥 construire avec valeurs existantes
+_buildControllers(caracteristiques, localData);
+
+setState(() {
+  caracteristiquesFiltrees = caracteristiques;
+});
+    } catch (e) {
+      debugPrint("Erreur chargement données spécifiques: $e");
+    } finally {
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
+    }
+  }
+void _buildControllers(List<CaracteristiqueProduit> caracteristiques,
+    [List<DonneeSpecifique>? values]) {
+  
+  dynamicControllers.clear();
+
+  for (var c in caracteristiques) {
+    final value = values
+        ?.firstWhere(
+          (d) => d.caracteristiqueId == c.id,
+          orElse: () => DonneeSpecifique(valeur: "", caracteristiqueId: c.id!),
+        )
+        .valeur;
+
+    dynamicControllers[c.id!] = TextEditingController(
+      text: value ?? "",
+    );
+  }
+}
   Future<void> _fetchDataLocal() async {
     if (!mounted) return;
     setState(() => isLoading = true);
@@ -219,13 +313,19 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
       final catData = await DatabaseService.getAll("CategorieProduit");
       final acteurs = await DatabaseService.getAll("Acteur");
       final equiv = await DatabaseService.getAll("EquivalenceUnite");
+      final caract = await DatabaseService.getAll("CaracteristiqueProduit");
 
       if (!mounted) return;
       setState(() {
+        caracteristiques =
+            caract.map((m) => CaracteristiqueProduit.fromJson(m)).toList();
+
         niveaux = niveauxData
             .map((m) => NiveauApprovisionnement.fromJson(m))
             .toList();
+
         produit = produitData.map((m) => Produit.fromJson(m)).toList();
+
         unites = uniteData
             .map((m) => UniteConventionnelle.fromJson(m))
             .where((u) => !(u.uniteStock))
@@ -256,23 +356,12 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
             );
           }
           calculateEquivalencePrice();
-          // if (p!.uniteMesure3 != null) {
-          //   selectedUnite2 = unites.firstWhere(
-          //     (u) => u.libelle == p!.uniteMesure3,
-          //     orElse: () => Unite(libelle: p!.uniteMesure3),
-          //   );
-          // }
 
           // ✅ Qualité
           selectedQualite = p!.qualiteProduit;
 
           // ✅ Transport
           selectedUniteTransport = p!.uniteTransport;
-
-          // ✅ Image
-          // if (p!.image != null && p!.image!.isNotEmpty) {
-          //   _imageFile = File(p!.image!);
-          // }
         });
       }
     } finally {
@@ -289,7 +378,7 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
             e.produit!.idProduit == selectedProduit!.idProduit &&
             e.uniteConventionnelle!.idUnite == selectedUnite1!.idUnite,
       );
-
+      selectedUniteMesure1 = eq.uniteConventionnelle!.libelle;
       return eq.equivalenceUnite;
     } catch (e) {
       return null;
@@ -439,12 +528,37 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
           items: filteredProduits,
           itemLabel: (p) => p!.nomProduit ?? "",
           selectedItem: selectedProduit,
-          onSelected: (p) {
-            setState(() => selectedProduit = p);
-            calculateEquivalencePrice(); // Recalculer le prix à l'unité kg lors du changement de produit
-          },
+          // onSelected: (p) async {
+          //   final data = await DatabaseService.getCaracteristiquesByProduit(
+          //       p.codeProduit);
+
+          //   setState(() {
+          //     selectedProduit = p;
+          //     caracteristiquesFiltrees = data;
+
+          //     // 🔥 reset anciens champs
+          //     dynamicControllers.clear();
+          //   });
+
+          //   calculateEquivalencePrice();
+          // },
+          onSelected: (p) async {
+  final data =
+      await DatabaseService.getCaracteristiquesByProduit(p.codeProduit);
+
+  if (!mounted) return;
+
+  setState(() {
+    selectedProduit = p;
+    caracteristiquesFiltrees = data;
+  });
+
+  _buildControllers(data); // 🔥 reset propre
+  calculateEquivalencePrice();
+},
         ),
       ),
+      _buildDynamicFields(),
       SelectField(
         label: "Variété",
         icon: Icons.category_outlined,
@@ -482,6 +596,68 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
         },
       ),
     ]);
+  }
+
+  Widget _buildDynamicFields() {
+    if (caracteristiquesFiltrees.isEmpty) return SizedBox();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 🔥 MESSAGE INFO
+        Container(
+          padding: const EdgeInsets.all(10),
+          margin: const EdgeInsets.only(bottom: 10),
+          decoration: BoxDecoration(
+            color: AppColors.lightGreen.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.info_outline,
+                  size: 18, color: AppColors.primaryGreen),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  "Ces informations sont complémentaires et optionnelles.",
+                  style: TextStyle(
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+       ...caracteristiquesFiltrees.map((c) {
+  final controller = dynamicControllers[c.id!];
+
+  if (controller == null) return const SizedBox();
+
+  final isNumber = c.type == "NOMBRE";
+
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        c.nom ?? "",
+        style: TextStyle(
+          fontWeight: FontWeight.w600,
+          fontSize: 14,
+        ),
+      ),
+      _buildTextField(
+        controller: controller,
+        label: "Saisir ${c.nom ?? ""}",
+        icon: isNumber ? Icons.numbers : Icons.text_fields,
+        isNumber: isNumber,
+      ),
+      const SizedBox(height: 10),
+    ],
+  );
+}).toList(),
+      ],
+    );
   }
 
   // --- SECTION PRIX ---
@@ -923,36 +1099,25 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
         widget.enqueteCollecte == null ||
         _prix1Controller == null ||
         _prix2Controller == null) {
-      print("${selectedUniteMesure}");
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text("Veuillez renseigné tout les champs obligatoire")),
+            content: Text("Veuillez renseigner tous les champs obligatoires")),
       );
       return;
     }
 
     setState(() => isLoading = true);
 
-    // --- LOGIQUE DE DETERMINATION DU CHEMIN ---
-    if (_imageFile != null) {
-      pathImageToSave = _imageFile!.path; // Priorité à la nouvelle capture
-    } else if (existingImage != null) {
-      pathImageToSave = existingImage; // Garder l'ancienne si pas de nouvelle
-    } else {
-      pathImageToSave = null; // L'utilisateur a tout supprimé
-    }
-
     try {
       calculateEquivalencePrice();
-      // print("prix m  ${_prix1Controller.text}");
+
       final data = PrixMarche(
         variete: selectedVariete?.libelle ?? "",
         prixUnite1: safeText(_prix1Controller) ?? "0",
         prixUnite2: safeText(_prix2Controller)!,
-        // prixUnite3: safeText(_prix3Controller) ?? "",
         uniteMesure2: selectedUniteMesure ?? "",
         commercant: selectedActeur ?? "",
-        uniteMesure3: selectedUniteMesure2 ?? "",
+        uniteMesure1: selectedUniteMesure1 ?? "",
         qualiteProduit: selectedQualite ?? "",
         etatRoute: selectedEtatRoute ?? "",
         produit: selectedProduit,
@@ -970,18 +1135,100 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
         image: pathImageToSave,
       );
 
+      int? prixMarcheId;
+
+      // =========================
+      // INSERT / UPDATE PRIX
+      // =========================
       if (widget.isEdit == true) {
+        // 1. update principal
         await DatabaseService.update(
           "PrixMarche",
           data.toJson(),
           "idPrixMarche",
           p!.idPrixMarche,
         );
-        print("data ${data.prixUnite1}");
+
+        prixMarcheId = p!.idPrixMarche;
+
+        // 2. reset dynamiques
+        await DatabaseService.deleteWhere(
+          "DonneeSpecifique",
+          "idPrixMarche = ?",
+          [prixMarcheId],
+        );
       } else {
-        await DatabaseService.insert("PrixMarche", data.toJson());
-        print("data ${data.prixUnite1}");
+        // INSERT principal
+        prixMarcheId = await DatabaseService.insert(
+          "PrixMarche",
+          data.toJson(),
+        );
       }
+
+// 3. re-insert dynamiques (commun INSERT + UPDATE)
+      final db = await openDatabaseConnection();
+
+      if (db != null && prixMarcheId != null) {
+        final batch = db.batch();
+
+        for (var entry in dynamicControllers.entries) {
+          final value = entry.value.text.trim();
+          if (value.isEmpty) continue;
+
+          batch.insert("DonneeSpecifique", {
+            "caracteristiqueId": entry.key,
+            "idPrixMarche": prixMarcheId,
+            "valeur": value,
+          });
+        }
+
+        await batch.commit(noResult: true);
+      }
+      // if (widget.isEdit == true) {
+      //   await DatabaseService.update(
+      //     "PrixMarche",
+      //     data.toJson(),
+      //     "idPrixMarche",
+      //     p!.idPrixMarche,
+      //   );
+
+      //   prixMarcheId = p!.idPrixMarche;
+
+      //   // 🔥 delete anciennes données spécifiques
+      //   await DatabaseService.deleteWhere(
+      //     "DonneeSpecifique",
+      //     "idPrixMarche = ?",
+      //     [prixMarcheId],
+      //   );
+      // } else {
+      //   prixMarcheId = await DatabaseService.insert(
+      //     "PrixMarche",
+      //     data.toJson(),
+      //   );
+      // }
+
+      // // =========================
+      // // INSERT DONNÉES SPÉCIFIQUES
+      // // =========================
+      // final db = await openDatabaseConnection();
+
+      // if (db != null && prixMarcheId != null) {
+      //   final batch = db.batch();
+
+      //   for (var entry in dynamicControllers.entries) {
+      //     final value = entry.value.text.trim();
+
+      //     if (value.isEmpty) continue;
+
+      //     batch.insert("DonneeSpecifique", {
+      //       "caracteristiqueId": entry.key,
+      //       "idPrixMarche": prixMarcheId,
+      //       "valeur": value,
+      //     });
+      //   }
+
+      //   await batch.commit(noResult: true);
+      // }
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

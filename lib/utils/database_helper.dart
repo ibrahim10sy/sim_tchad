@@ -24,20 +24,15 @@ const dbName = "database.db";
 //   }
 // }
 
-
 Future<Database> openDatabaseConnection() async {
   final databasePath = await getDatabasesPath();
   final path = join(databasePath, dbName);
 
-  return await openDatabase(
-    path,
-    version: 2,
-   onCreate: (db, version) async {
+  return await openDatabase(path, version: 2, onCreate: (db, version) async {
+    print("Création des tables...");
 
-  print("Création des tables...");
-
-  /// PRIX MARCHE
-  await db.execute('''
+    /// PRIX MARCHE
+    await db.execute('''
   CREATE TABLE IF NOT EXISTS PrixMarche (
     idPrixMarche INTEGER PRIMARY KEY AUTOINCREMENT,
     variete TEXT,
@@ -58,6 +53,7 @@ Future<Database> openDatabaseConnection() async {
     origineProduit TEXT,
     observation TEXT,
     dateAjout TEXT,
+    uniteMesure1 TEXT,
     uniteMesure2 TEXT,
     uniteMesure3 TEXT,
     commercant TEXT,
@@ -68,9 +64,9 @@ Future<Database> openDatabaseConnection() async {
   )
   ''');
 
-  await db.execute('''
+    await db.execute('''
   CREATE TABLE IF NOT EXISTS PrixMarches (
-     idPrixMarche INTEGER PRIMARY KEY,
+    idPrixMarche INTEGER PRIMARY KEY,
         codePrix TEXT NOT NULL,
         image TEXT,
         variete TEXT,
@@ -89,6 +85,7 @@ Future<Database> openDatabaseConnection() async {
         observation TEXT,
         dateAjout TEXT,
         dateModif TEXT,
+        uniteMesure1 TEXT,
         uniteMesure2 TEXT,
         uniteMesure3 TEXT,
         produit TEXT,
@@ -96,12 +93,22 @@ Future<Database> openDatabaseConnection() async {
         niveau TEXT,
         marche TEXT,
         enqueteur TEXT,
-        enqueteCollecte TEXT
+        enqueteCollecte TEXT,
+        donneeSpecifique TEXT
   )
   ''');
 
-  /// PRIX MAGASIN
-  await db.execute('''
+    await db.execute('''
+  CREATE TABLE IF NOT EXISTS DonneeSpecifique (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    caracteristiqueId INTEGER,
+    idPrixMarche INTEGER,
+    valeur TEXT
+  )
+  ''');
+
+    /// PRIX MAGASIN
+    await db.execute('''
   CREATE TABLE IF NOT EXISTS PrixMagasin (
     idPrixMagasin INTEGER PRIMARY KEY AUTOINCREMENT,
     variete TEXT,
@@ -126,7 +133,7 @@ Future<Database> openDatabaseConnection() async {
     enqueteMagasin TEXT
   )
   ''');
-  await db.execute('''
+    await db.execute('''
   CREATE TABLE IF NOT EXISTS PrixMagasins (
      idPrixMagasin INTEGER PRIMARY KEY,
         codePrix TEXT,
@@ -152,8 +159,8 @@ Future<Database> openDatabaseConnection() async {
   )
   ''');
 
-  /// ENQUETE COLLECTE
-   await db.execute('''
+    /// ENQUETE COLLECTE
+    await db.execute('''
   CREATE TABLE IF NOT EXISTS EnqueteCollecte (
     idEnquete INTEGER PRIMARY KEY AUTOINCREMENT,
     numFiche TEXT,
@@ -167,8 +174,8 @@ Future<Database> openDatabaseConnection() async {
   )
   ''');
 
-  /// ENQUETE MAGASIN
-  await db.execute('''
+    /// ENQUETE MAGASIN
+    await db.execute('''
   CREATE TABLE IF NOT EXISTS EnqueteMagasin (
     idEnquete INTEGER PRIMARY KEY AUTOINCREMENT,
     numFiche TEXT,
@@ -181,8 +188,8 @@ Future<Database> openDatabaseConnection() async {
     commune TEXT
   )
   ''');
-  
-  await db.execute('''
+
+    await db.execute('''
   CREATE TABLE IF NOT EXISTS EnqueteCollecte (
     idEnquete INTEGER PRIMARY KEY AUTOINCREMENT,
     numFiche TEXT,
@@ -196,8 +203,8 @@ Future<Database> openDatabaseConnection() async {
   )
   ''');
 
-  /// ENQUETE CAMPAGNE
-  await db.execute('''
+    /// ENQUETE CAMPAGNE
+    await db.execute('''
   CREATE TABLE IF NOT EXISTS EnqueteCampagne (
     idEnquete INTEGER PRIMARY KEY AUTOINCREMENT,
     numFiche TEXT,
@@ -210,8 +217,8 @@ Future<Database> openDatabaseConnection() async {
   )
   ''');
 
-  /// ENQUETE SUIVI
-  await db.execute('''
+    /// ENQUETE SUIVI
+    await db.execute('''
   CREATE TABLE IF NOT EXISTS EnqueteSuivi (
     idEnquete INTEGER PRIMARY KEY AUTOINCREMENT,
     numFiche TEXT,
@@ -224,8 +231,8 @@ Future<Database> openDatabaseConnection() async {
   )
   ''');
 
-  /// MAGASIN
-  await db.execute('''
+    /// MAGASIN
+    await db.execute('''
   CREATE TABLE IF NOT EXISTS Magasin (
     idMagasin INTEGER PRIMARY KEY,
     codeMagasin TEXT,
@@ -235,8 +242,8 @@ Future<Database> openDatabaseConnection() async {
   )
   ''');
 
-  /// MARCHE
-  await db.execute('''
+    /// MARCHE
+    await db.execute('''
   CREATE TABLE IF NOT EXISTS Marche (
     idMarche INTEGER PRIMARY KEY,
     codeMarche TEXT,
@@ -247,8 +254,8 @@ Future<Database> openDatabaseConnection() async {
   )
   ''');
 
-  /// PRODUIT
-  await db.execute('''
+    /// PRODUIT
+    await db.execute('''
   CREATE TABLE IF NOT EXISTS Produit (
     idProduit INTEGER PRIMARY KEY,
     codeProduit TEXT,
@@ -261,8 +268,20 @@ Future<Database> openDatabaseConnection() async {
   )
   ''');
 
-  /// VARIETE
-  await db.execute('''
+    //caracteristique
+    await db.execute('''
+  CREATE TABLE IF NOT EXISTS CaracteristiqueProduit (
+    id INTEGER PRIMARY KEY,
+    nom TEXT,
+    type TEXT,
+    idProduit INTEGER,
+    codeProduit TEXT,
+    nomProduit TEXT
+  )
+  ''');
+
+    /// VARIETE
+    await db.execute('''
   CREATE TABLE IF NOT EXISTS Variete (
     idVariete INTEGER PRIMARY KEY,
     codeVariete TEXT,
@@ -273,8 +292,8 @@ Future<Database> openDatabaseConnection() async {
   )
   ''');
 
-  /// ACTEUR
-  await db.execute('''
+    /// ACTEUR
+    await db.execute('''
   CREATE TABLE IF NOT EXISTS Acteur (
     idActeur INTEGER PRIMARY KEY,
     codeActeur TEXT,
@@ -287,8 +306,8 @@ Future<Database> openDatabaseConnection() async {
   )
   ''');
 
-  /// COMMUNE
-  await db.execute('''
+    /// COMMUNE
+    await db.execute('''
   CREATE TABLE IF NOT EXISTS Commune (
     idCommune INTEGER PRIMARY KEY,
     codeCommune TEXT,
@@ -297,8 +316,8 @@ Future<Database> openDatabaseConnection() async {
   )
   ''');
 
-  /// UNITE
-  await db.execute('''
+    /// UNITE
+    await db.execute('''
   CREATE TABLE IF NOT EXISTS UniteConventionnelle(
     idUnite INTEGER PRIMARY KEY,
     libelle TEXT,
@@ -308,7 +327,7 @@ Future<Database> openDatabaseConnection() async {
   )
   ''');
 
-  await db.execute('''
+    await db.execute('''
   CREATE TABLE IF NOT EXISTS EquivalenceUnite(
     id INTEGER PRIMARY KEY,
     equivalenceUnite REAL,
@@ -317,8 +336,8 @@ Future<Database> openDatabaseConnection() async {
     commune TEXT
   )
   ''');
-  
-  await db.execute('''
+
+    await db.execute('''
   CREATE TABLE IF NOT EXISTS SuiviFlux (
     idSuivi INTEGER PRIMARY KEY AUTOINCREMENT,
           observation TEXT,
@@ -337,7 +356,7 @@ Future<Database> openDatabaseConnection() async {
   )
   ''');
 
-  await db.execute('''
+    await db.execute('''
   CREATE TABLE IF NOT EXISTS SuiviFluxs (
       idSuivi  INTEGER PRIMARY KEY,
           codeSuivi TEXT,
@@ -357,7 +376,7 @@ Future<Database> openDatabaseConnection() async {
   )
   ''');
 
-  await db.execute('''
+    await db.execute('''
   CREATE TABLE IF NOT EXISTS SuiviCampagne (
    idSuiviCampagne INTEGER PRIMARY KEY AUTOINCREMENT,
           commentaire TEXT,
@@ -379,7 +398,7 @@ Future<Database> openDatabaseConnection() async {
   )
   ''');
 
-  await db.execute('''
+    await db.execute('''
   CREATE TABLE IF NOT EXISTS SuiviCampagnes (
   idSuiviCampagne INTEGER PRIMARY KEY,
           codeSuiviCampagne TEXT,
@@ -398,8 +417,8 @@ Future<Database> openDatabaseConnection() async {
           enqueteCampagne TEXT
   )
   ''');
-  
-  await db.execute('''
+
+    await db.execute('''
   CREATE TABLE IF NOT EXISTS NiveauApprovisionnement (
     idNiveauApprovisionnement INTEGER PRIMARY KEY,
           codeNiveau TEXT,
@@ -407,7 +426,7 @@ Future<Database> openDatabaseConnection() async {
   )
   ''');
 
-  await db.execute('''
+    await db.execute('''
   CREATE TABLE IF NOT EXISTS  CategorieProduit(
     idCategorieProduit INTEGER PRIMARY KEY,
           codeCategorie TEXT,
@@ -416,7 +435,7 @@ Future<Database> openDatabaseConnection() async {
   )
   ''');
 
-  await db.execute('''
+    await db.execute('''
   CREATE TABLE IF NOT EXISTS  Campagne(
           idCampagne INTEGER PRIMARY KEY,
           codeCampagne TEXT,
@@ -429,7 +448,7 @@ Future<Database> openDatabaseConnection() async {
   )
   ''');
 
-  await db.execute('''
+    await db.execute('''
   CREATE TABLE IF NOT EXISTS  Variete (
           idVariete INTEGER PRIMARY KEY,
           codeVariete TEXT,
@@ -440,7 +459,7 @@ Future<Database> openDatabaseConnection() async {
   )
   ''');
 
-  await db.execute('''
+    await db.execute('''
   CREATE TABLE IF NOT EXISTS  Equivalence (
           id INTEGER PRIMARY KEY,
           unite TEXT,
@@ -449,7 +468,7 @@ Future<Database> openDatabaseConnection() async {
             )
   ''');
 
-  await db.execute('''
+    await db.execute('''
   CREATE TABLE IF NOT EXISTS  Produit (
           idProduit INTEGER PRIMARY KEY,
           codeProduit TEXT,
@@ -462,7 +481,7 @@ Future<Database> openDatabaseConnection() async {
   )
   ''');
 
-  await db.execute('''
+    await db.execute('''
   CREATE TABLE IF NOT EXISTS BassinProduction (
           idBassin INTEGER PRIMARY KEY,
           codeBassin TEXT,
@@ -470,7 +489,6 @@ Future<Database> openDatabaseConnection() async {
   )
   ''');
 
-  print("Toutes les tables ont été créées avec succès.");
-}
-  );
+    print("Toutes les tables ont été créées avec succès.");
+  });
 }

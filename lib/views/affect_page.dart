@@ -97,6 +97,15 @@ class _AffectPageState extends State<AffectPage> {
 
     // Map des tables avec leurs colonnes autorisées
     final Map<String, List<String>> allowedColumns = {
+      "CaracteristiqueProduit": [
+        'id',
+        'nom',
+        'type',
+        'obligatoire',
+        'idProduit',
+        'codeProduit',
+        'nomProduit'
+      ],
       "Produit": [
         'idProduit',
         'codeProduit',
@@ -181,6 +190,7 @@ class _AffectPageState extends State<AffectPage> {
     // Liste des ressources à synchroniser
     final resources = [
       ["produits", "Produit", "Produits"],
+      ["caracteristiques", "CaracteristiqueProduit", "CaracteristiqueProduit"],
       ["bassins", "BassinProduction", "Bassins"],
       ["varietes", "Variete", "Variétés"],
       ["unites", "UniteConventionnelle", "UniteConventionnelle"],

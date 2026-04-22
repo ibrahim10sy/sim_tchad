@@ -172,6 +172,20 @@ class _HomePageState extends State<HomePage>
         'categorieProduit',
         'formeProduit'
       ],
+      "CaracteristiqueProduit": [
+        'id',
+        'nom',
+        'type',
+        'obligatoire',
+        'idProduit',
+        'codeProduit',
+        'nomProduit'
+      ],
+      "DonneeSpecifique": [
+        'id',
+        'caracteristiqueId',
+        'valeur'
+      ],
       "BassinProduction": [
         'idBassin',
         'codeBassin',
@@ -252,6 +266,8 @@ class _HomePageState extends State<HomePage>
     // Liste des ressources à synchroniser
     final resources = [
       ["produits", "Produit", "Produits"],
+       ["caracteristiques", "CaracteristiqueProduit", "CaracteristiqueProduit"],
+       ["donnees-specifiques", "DonneeSpecifique", "DonneeSpecifique"],
       ["bassins", "BassinProduction", "Bassins"],
       ["varietes", "Variete", "Variétés"],
       ["unites", "UniteConventionnelle", "UniteConventionnelle"],

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:sim_tchad/core/constants/app_constants.dart';
+import 'package:sim_tchad/models/DonneeSpecifique.dart';
 import 'package:sim_tchad/models/Enqueteur.dart';
 import 'package:sim_tchad/models/PrixMarche.dart';
 import 'package:sim_tchad/models/SuiviCampagne.dart';
@@ -509,57 +510,115 @@ Future<bool> syncDataSuiviByFicheServer(
   }
 }
 
+Future<bool> syncDonneeSpecifiqueToServer(int idPrixMarche) async {
+  final localData =
+      await DatabaseService.getDonneesSpecifiquesByPrixMarche(idPrixMarche);
+  if (localData.isEmpty) {
+    print("Aucune donnée à synchroniser.");
+    return false;
+  }
+
+  bool success = false;
+  int attempt = 0;
+
+  while (!success && attempt < retry) {
+    try {
+      attempt++;
+
+      final response = await http.post(
+        Uri.parse("${API_URL}donnees-specifiques/$idPrixMarche"),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(
+            localData.map((e) => e.toJson()).toList()), // ✅ ENVOI DU JSON
+      );
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        print(
+            "Donnees specificique synchronisée avec succès : ${localData.length} données spécifiques envoyées");
+        success = true;
+        // 🔥 SUPPRESSION DES DONNÉES LOCALES
+        for (var item in localData) {
+          await DatabaseService.delete(
+            "DonneeSpecifique",
+            "idDonneeSpecifique",
+            item.id,
+          );
+        }
+      } else {
+        print("Tentative $attempt/$retry échouée. Réponse : ${response.body}");
+      }
+    } catch (e) {
+      print("Erreur lors de l'envoi (Tentative $attempt/$retry) : $e");
+      if (attempt < retry) {
+        await Future.delayed(Duration(milliseconds: delay));
+      }
+    }
+  }
+
+  if (!success) {
+    print(
+        "Échec de la synchronisation pour ${localData.length} données spécifiques");
+  }
+
+  return success;
+}
+
 Future<bool> syncDataMarcheByFicheServer(
-    Enqueteur enqueteur, String numFiche) async {
-  print("Sync en cours... $numFiche");
+  Enqueteur enqueteur,
+  String numFiche,
+) async {
+  print("🚀 Sync en cours... $numFiche");
 
   try {
-    // 1. Récupérer données locales
     final localData = await DatabaseService.getPrixMarcheByNum(numFiche);
 
     if (localData.isEmpty) {
-      print("Aucune donnée à synchroniser.");
+      print("❌ Aucune donnée à synchroniser.");
       return false;
     }
 
-    // 2. Vérifier si fiche existe
     final ficheExists = await checkEnqueteCollecteExists(numFiche);
 
     if (!ficheExists) {
-      final success = await syncFicheToServer(numFiche);
-      if (!success) {
-        print("Échec synchro fiche");
-        return false;
-      }
+      final ok = await syncFicheToServer(numFiche);
+      if (!ok) return false;
     }
 
-    // 3. Construire JSON
-    final data = localData.map((item) {
-      print("prix ${double.tryParse(item.prixUnite1)}");
-      return {
-        "variete": item.variete ?? null,
-        // "age": int.tryParse(item.age ?? "0"),
+    // =========================
+    // 🔥 BUILD PRIX + DONNÉES SPÉCIFIQUES
+    // =========================
+
+    final List prixList = [];
+    final List<List<Map<String, dynamic>>> donneesList = [];
+
+    for (final item in localData) {
+      final donnees = await DatabaseService.getDonneesSpecifiquesByPrixMarche(
+        item.idPrixMarche!,
+      );
+
+      prixList.add({
+        "variete": item.variete,
+        "age": item.age,
         "prixUnite1": double.tryParse(item.prixUnite1) ?? 0,
-        "prixUnite2": int.tryParse(item.prixUnite2) ?? null,
-        // "prixUnite3": int.tryParse(item.prixUnite3) ?? null,
-        "uniteMesure2": item.uniteMesure2 ?? null,
-        // "uniteMesure3": item.uniteMesure3 ?? null,
+        "prixUnite2": int.tryParse(item.prixUnite2),
+        "prixUnite3": int.tryParse(item.prixUnite3 ?? "0"),
+        "uniteMesure1": item.uniteMesure1,
+        "uniteMesure2": item.uniteMesure2,
         "prixTransport": int.tryParse(item.prixTransport ?? "0"),
-        "moyenTransport": item.moyenTransport ?? null,
-        "fournisseur": item.fournisseur ?? null,
-        "qualiteProduit": item.qualiteProduit ?? null,
-        "clientPrincipal": item.clientPrincipal ?? null,
-        "uniteTransport": item.uniteTransport ?? null,
-        "etatRoute": item.etatRoute ?? null,
-        "origineProduit": item.origineProduit ?? null,
-        "observation": item.observation ?? null,
-        "dateAjout": item.dateAjout ?? null,
-        "commercant": item.commercant ?? null,
+        "moyenTransport": item.moyenTransport,
+        "fournisseur": item.fournisseur,
+        "qualiteProduit": item.qualiteProduit,
+        "clientPrincipal": item.clientPrincipal,
+        "uniteTransport": item.uniteTransport,
+        "etatRoute": item.etatRoute,
+        "origineProduit": item.origineProduit,
+        "observation": item.observation,
+        "dateAjout": item.dateAjout,
+        "commercant": item.commercant,
         "produit": {
           "idProduit": item.produit?.idProduit,
           "nomProduit": item.produit?.nomProduit,
         },
-
         "niveau": item.niveau != null
             ? {
                 "idNiveauApprovisionnement":
@@ -571,9 +630,7 @@ Future<bool> syncDataMarcheByFicheServer(
                 "idMarche": item.marche!.idMarche,
                 "nomMarche": item.marche!.nomMarche,
                 "commune": {
-                  "idCommune": item.marche?.commune != null
-                      ? item.marche?.commune.idCommune
-                      : null
+                  "idCommune": item.marche?.commune?.idCommune,
                 }
               }
             : null,
@@ -581,8 +638,21 @@ Future<bool> syncDataMarcheByFicheServer(
         "enqueteCollecte": item.enqueteCollecte != null
             ? {"numFiche": item.enqueteCollecte!.numFiche}
             : null,
-      };
-    }).toList();
+      });
+
+      donneesList.add(
+        donnees
+            .map((d) => {
+                  "caracteristiqueId": d.caracteristiqueId,
+                  "valeur": d.valeur,
+                })
+            .toList(),
+      );
+    }
+
+    // =========================
+    // 🔥 REQUEST
+    // =========================
 
     bool success = false;
     int attempt = 0;
@@ -591,15 +661,14 @@ Future<bool> syncDataMarcheByFicheServer(
       try {
         attempt++;
 
-        var request = http.MultipartRequest(
+        final request = http.MultipartRequest(
           'POST',
           Uri.parse("${API_URL}prix-marches/batch"),
         );
 
-        // 🔥 JSON
-        request.fields['prixMarche'] = jsonEncode(data);
+        request.fields['prixMarche'] = jsonEncode(prixList);
+        request.fields['donneesSpecifiques'] = jsonEncode(donneesList);
 
-        // 🔥 Images
         for (int i = 0; i < localData.length; i++) {
           final item = localData[i];
 
@@ -608,43 +677,53 @@ Future<bool> syncDataMarcheByFicheServer(
               await http.MultipartFile.fromPath(
                 'images',
                 item.image!,
-                filename: "image_$i.jpg",
+                filename: "img_$i.jpg",
               ),
             );
           }
         }
 
-        request.headers['Content-Type'] = 'multipart/form-data';
-
         final response = await request.send();
-        final responseBody = await response.stream.bytesToString();
+        final body = await response.stream.bytesToString();
 
         if (response.statusCode >= 200 && response.statusCode < 300) {
           print("✅ Sync réussie");
 
-          // 🔥 SUPPRESSION DES DONNÉES LOCALES
+          // =========================
+          // 🔥 CLEAN LOCAL DB
+          // =========================
+
+          final db = await openDatabaseConnection();
+          final batch = db!.batch();
+
           for (var item in localData) {
-            await DatabaseService.delete(
+            batch.delete(
+              "DonneeSpecifique",
+              where: "idPrixMarche = ?",
+              whereArgs: [item.idPrixMarche],
+            );
+
+            batch.delete(
               "PrixMarche",
-              "idPrixMarche",
-              item.idPrixMarche,
+              where: "idPrixMarche = ?",
+              whereArgs: [item.idPrixMarche],
             );
           }
 
-          // 🔥 SUPPRIMER LA FICHE
-          await DatabaseService.delete(
+          batch.delete(
             "EnqueteCollecte",
-            "numFiche",
-            numFiche,
+            where: "numFiche = ?",
+            whereArgs: [numFiche],
           );
+
+          await batch.commit(noResult: true);
 
           success = true;
         } else {
-          print("❌ Tentative $attempt échouée: $responseBody");
+          print("❌ Erreur: $body");
         }
       } catch (e) {
-        print("❌ Erreur tentative $attempt: $e");
-
+        print("❌ Erreur sync: $e");
         if (attempt < retry) {
           await Future.delayed(Duration(milliseconds: delay));
         }
@@ -657,6 +736,154 @@ Future<bool> syncDataMarcheByFicheServer(
     return false;
   }
 }
+// Future<bool> syncDataMarcheByFicheServer(
+//     Enqueteur enqueteur, String numFiche) async {
+//   print("Sync en cours... $numFiche");
+
+//   try {
+//     // 1. Récupérer données locales
+//     final localData = await DatabaseService.getPrixMarcheByNum(numFiche);
+
+//     if (localData.isEmpty) {
+//       print("Aucune donnée à synchroniser.");
+//       return false;
+//     }
+
+//     // 2. Vérifier si fiche existe
+//     final ficheExists = await checkEnqueteCollecteExists(numFiche);
+
+//     if (!ficheExists) {
+//       final success = await syncFicheToServer(numFiche);
+//       if (!success) {
+//         print("Échec synchro fiche");
+//         return false;
+//       }
+//     }
+
+//     // 3. Construire JSON
+//     final data = localData.map((item) {
+//       print("prix ${double.tryParse(item.prixUnite1)}");
+//       return {
+//         "variete": item.variete ?? null,
+//         // "age": int.tryParse(item.age ?? "0"),
+//         "prixUnite1": double.tryParse(item.prixUnite1) ?? 0,
+//         "prixUnite2": int.tryParse(item.prixUnite2) ?? null,
+//         // "prixUnite3": int.tryParse(item.prixUnite3) ?? null,
+//         "uniteMesure2": item.uniteMesure2 ?? null,
+//         "uniteMesure1": item.uniteMesure1 ?? null,
+//         "prixTransport": int.tryParse(item.prixTransport ?? "0"),
+//         "moyenTransport": item.moyenTransport ?? null,
+//         "fournisseur": item.fournisseur ?? null,
+//         "qualiteProduit": item.qualiteProduit ?? null,
+//         "clientPrincipal": item.clientPrincipal ?? null,
+//         "uniteTransport": item.uniteTransport ?? null,
+//         "etatRoute": item.etatRoute ?? null,
+//         "origineProduit": item.origineProduit ?? null,
+//         "observation": item.observation ?? null,
+//         "dateAjout": item.dateAjout ?? null,
+//         "commercant": item.commercant ?? null,
+//         "produit": {
+//           "idProduit": item.produit?.idProduit,
+//           "nomProduit": item.produit?.nomProduit,
+//         },
+
+//         "niveau": item.niveau != null
+//             ? {
+//                 "idNiveauApprovisionnement":
+//                     item.niveau?.idNiveauApprovisionnement,
+//               }
+//             : null,
+//         "marche": item.marche != null
+//             ? {
+//                 "idMarche": item.marche!.idMarche,
+//                 "nomMarche": item.marche!.nomMarche,
+//                 "commune": {
+//                   "idCommune": item.marche?.commune != null
+//                       ? item.marche?.commune.idCommune
+//                       : null
+//                 }
+//               }
+//             : null,
+//         "enqueteur": enqueteur != null ? enqueteur : null,
+//         "enqueteCollecte": item.enqueteCollecte != null
+//             ? {"numFiche": item.enqueteCollecte!.numFiche}
+//             : null,
+//       };
+//     }).toList();
+
+//     bool success = false;
+//     int attempt = 0;
+
+//     while (!success && attempt < retry) {
+//       try {
+//         attempt++;
+
+//         var request = http.MultipartRequest(
+//           'POST',
+//           Uri.parse("${API_URL}prix-marches/batch"),
+//         );
+
+//         // 🔥 JSON
+//         request.fields['prixMarche'] = jsonEncode(data);
+
+//         // 🔥 Images
+//         for (int i = 0; i < localData.length; i++) {
+//           final item = localData[i];
+
+//           if (item.image != null && File(item.image!).existsSync()) {
+//             request.files.add(
+//               await http.MultipartFile.fromPath(
+//                 'images',
+//                 item.image!,
+//                 filename: "image_$i.jpg",
+//               ),
+//             );
+//           }
+//         }
+
+//         request.headers['Content-Type'] = 'multipart/form-data';
+
+//         final response = await request.send();
+//         final responseBody = await response.stream.bytesToString();
+
+//         if (response.statusCode >= 200 && response.statusCode < 300) {
+//           print("✅ Sync réussie");
+
+//           // 🔥 SUPPRESSION DES DONNÉES LOCALES
+//           for (var item in localData) {
+//             await DatabaseService.delete(
+//               "PrixMarche",
+//               "idPrixMarche",
+//               item.idPrixMarche,
+//             );
+//           }
+
+//           // 🔥 SUPPRIMER LA FICHE
+//           await DatabaseService.delete(
+//             "EnqueteCollecte",
+//             "numFiche",
+//             numFiche,
+//           );
+
+//           success = true;
+//         } else {
+//           print("❌ Tentative $attempt échouée: $responseBody");
+//         }
+//       } catch (e) {
+//         print("❌ Erreur tentative $attempt: $e");
+
+//         if (attempt < retry) {
+//           await Future.delayed(Duration(milliseconds: delay));
+//         }
+//       }
+//     }
+
+//     return success;
+//   } catch (e) {
+//     print("❌ Erreur générale: $e");
+//     return false;
+//   }
+// }
 
 Future<bool> syncDataMagasinByFicheServer(
     Enqueteur enqueteur, String numFiche) async {
@@ -1034,7 +1261,8 @@ Future<bool> syncDataUpdateServer() async {
             "prixUnite2": int.tryParse(item.prixUnite2) ?? null,
             // "prixUnite3": int.tryParse(item.prixUnite3 ?? "0"),
             "uniteMesure2": item.uniteMesure2,
-            "uniteMesure3": item.uniteMesure3,
+            "uniteMesure1": item.uniteMesure1 ?? null,
+            "uniteMesure3": item.uniteMesure3 ?? null,
             "prixTransport": int.tryParse(item.prixTransport ?? "0"),
             "moyenTransport": item.moyenTransport,
             "fournisseur": item.fournisseur,
