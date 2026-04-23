@@ -181,11 +181,7 @@ class _HomePageState extends State<HomePage>
         'codeProduit',
         'nomProduit'
       ],
-      "DonneeSpecifique": [
-        'id',
-        'caracteristiqueId',
-        'valeur'
-      ],
+      
       "BassinProduction": [
         'idBassin',
         'codeBassin',
@@ -267,7 +263,6 @@ class _HomePageState extends State<HomePage>
     final resources = [
       ["produits", "Produit", "Produits"],
        ["caracteristiques", "CaracteristiqueProduit", "CaracteristiqueProduit"],
-       ["donnees-specifiques", "DonneeSpecifique", "DonneeSpecifique"],
       ["bassins", "BassinProduction", "Bassins"],
       ["varietes", "Variete", "Variétés"],
       ["unites", "UniteConventionnelle", "UniteConventionnelle"],

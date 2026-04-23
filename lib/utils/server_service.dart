@@ -1251,12 +1251,10 @@ Future<bool> syncDataUpdateServer() async {
         try {
           attempt++;
 
-          // 🔥 JSON sécurisé
           final formattedData = {
             "idPrixMarche": item.idPrixMarche,
             "codePrix": item.codePrix,
             "variete": item.variete,
-            "age": int.tryParse(item.age ?? "0"),
             "prixUnite1": double.tryParse(item.prixUnite1),
             "prixUnite2": int.tryParse(item.prixUnite2) ?? null,
             // "prixUnite3": int.tryParse(item.prixUnite3 ?? "0"),
@@ -1273,8 +1271,14 @@ Future<bool> syncDataUpdateServer() async {
             "observation": item.observation,
             "dateAjout": item.dateAjout,
             "commercant": item.commercant ?? null,
-
-            // 🔥 relations (safe null)
+            "donneesSpecifiques": item.donneesSpecifiques != null
+                ? item.donneesSpecifiques!
+                    .map((e) => {
+                          "caracteristiqueId": e.caracteristiqueId,
+                          "valeur": e.valeur,
+                        })
+                    .toList()
+                : [],
             "produit": item.produit?.idProduit != null
                 ? {"idProduit": item.produit!.idProduit}
                 : null,
@@ -1285,19 +1289,6 @@ Future<bool> syncDataUpdateServer() async {
                         item.niveau!.idNiveauApprovisionnement
                   }
                 : null,
-
-            // "marche": item.marche?.idMarche != null
-            //     ? {"idMarche": item.marche!.idMarche}
-            //     : null,
-
-            // "enqueteur": item.enqueteur?.idEnqueteur != null
-            //     ? {"idEnqueteur": item.enqueteur!.idEnqueteur}
-            //     : null,
-
-            // "enqueteCollecte":
-            //     item.enqueteCollecte?.numFiche != null
-            //         ? {"numFiche": item.enqueteCollecte!.numFiche}
-            //         : null,
           };
 
           // 🔥 Multipart request (IMPORTANT : dans la boucle)

@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:sim_tchad/core/constants/app_colors.dart';
 import 'package:sim_tchad/models/Acteur.dart';
+import 'package:sim_tchad/models/CaracteristiqueProduit.dart';
 import 'package:sim_tchad/models/CategorieProduit.dart';
+import 'package:sim_tchad/models/DonneeSpecifique.dart';
 import 'package:sim_tchad/models/EnqueteCollecte.dart';
 import 'package:sim_tchad/models/Enqueteur.dart';
 import 'package:sim_tchad/models/EquivalenceUnite.dart';
@@ -15,6 +17,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:sim_tchad/models/Produit.dart';
 import 'package:sim_tchad/models/UniteConventionnelle.dart';
 import 'package:sim_tchad/models/Variete.dart';
+import 'package:sim_tchad/utils/database_helper.dart';
 import 'package:sim_tchad/utils/database_service.dart';
 import 'package:sim_tchad/views/widgets/buildSelectField.dart';
 import 'package:sim_tchad/views/widgets/showCustomSelector.dart';
@@ -73,7 +76,10 @@ class _UpdatePrixMarcheState extends State<UpdatePrixMarche> {
   String? existingImage; // Pour le chemin de l'image venant de la DB
   String? pathImageToSave;
   List<EquivalenceUnite> equivalences = [];
-
+  Map<int, TextEditingController> dynamicControllers = {};
+  List<CaracteristiqueProduit> caracteristiquesFiltrees = [];
+  List<CaracteristiqueProduit> caracteristiques = [];
+  List<DonneeSpecifique> anciennesDonnees = [];
   List<String> commercant = [
     "Commerçant 1",
     "Commerçant 2",
@@ -106,6 +112,7 @@ class _UpdatePrixMarcheState extends State<UpdatePrixMarche> {
     "Autre"
   ];
 
+  List<DonneeSpecifique> data = [];
   // Getter pour obtenir uniquement les produits de la catégorie sélectionnée
   List<Produit> get filteredProduits {
     if (selectedCategorie == null) return produit;
@@ -147,17 +154,88 @@ class _UpdatePrixMarcheState extends State<UpdatePrixMarche> {
     }
   }
 
+  // @override
+  // void initState() {
+  //   super.initState();
+  //   _fetchDataLocal();
+  //   _prix2Controller.addListener(() {
+  //     calculateEquivalencePrice();
+  //   });
+  //   if (widget.prixMarche != null) {
+  //     _initData();
+  //   }
+  // }
   @override
-  void initState() {
-    super.initState();
-    _fetchDataLocal();
-    _prix2Controller.addListener(() {
-      calculateEquivalencePrice();
+void initState() {
+  super.initState();
+  _fetchDataLocal();
+
+  _prix2Controller.addListener(() {
+    calculateEquivalencePrice();
+  });
+
+  _loadPrixMarcheFromDb(); // 🔥 au lieu de _initData()
+}
+
+  Future<void> _loadPrixMarcheFromDb() async {
+  final db = await openDatabaseConnection();
+
+  if (db == null) return;
+
+  final result = await db.query(
+    "PrixMarches",
+    where: "idPrixMarche = ?",
+    whereArgs: [widget.prixMarche!.idPrixMarche],
+  );
+
+  if (result.isEmpty) return;
+
+  final decoded = await DatabaseService.prixdecodeRelations(result.first, null);
+
+  final prix = PrixMarche.fromMap(decoded);
+
+  _applyData(prix);
+}
+
+void _applyData(PrixMarche prix) {
+  p = prix;
+
+  _prix1Controller.text = prix.prixUnite1 ?? "";
+  _prix2Controller.text = prix.prixUnite2 ?? "";
+  prixTransportController.text = prix.prixTransport ?? "";
+  observationController.text = prix.observation ?? "";
+  ageController.text = prix.age ?? "";
+  _origineController.text = prix.origineProduit ?? "";
+
+  selectedEtatRoute = prix.etatRoute;
+  selectedFournisseur = prix.fournisseur;
+  selectedClient = prix.clientPrincipal;
+  selectedQualite = prix.qualiteProduit;
+  selectedUniteTransport = prix.uniteTransport ?? "";
+  selectedMoyenTransport = prix.moyenTransport ?? "";
+  selectedProduit = prix.produit;
+  selectedActeur = prix.commercant ?? "";
+  selectedNiveau = prix.niveau;
+  selectedUniteMesure = prix.uniteMesure2 ?? "";
+  selectedUniteMesure2 = prix.uniteMesure3 ?? "";
+
+  WidgetsBinding.instance.addPostFrameCallback((_) async {
+    final caracteristiques =
+        await DatabaseService.getCaracteristiquesByProduit(
+            prix.produit!.codeProduit);
+
+    _buildControllers(
+      caracteristiques,
+      prix.donneesSpecifiques, // 🔥 maintenant OK
+    );
+
+    setState(() {
+      caracteristiquesFiltrees = caracteristiques;
+      anciennesDonnees = prix.donneesSpecifiques ?? [];
     });
-    if (widget.prixMarche != null) {
-      _initData();
-    }
-  }
+  });
+}
+
 
   void _initData() {
     p = widget.prixMarche!;
@@ -180,6 +258,28 @@ class _UpdatePrixMarcheState extends State<UpdatePrixMarche> {
     selectedUniteMesure = p!.uniteMesure2 ?? "";
     selectedUniteMesure2 = p!.uniteMesure3 ?? "";
     selectedActeur = p!.commercant ?? "";
+
+    // WidgetsBinding.instance.addPostFrameCallback((_) async {
+    //   final caracteristiques =
+    //       await DatabaseService.getCaracteristiquesByProduit(
+    //           p!.produit!.codeProduit);
+
+    //   if (!mounted) return;
+
+    //   caracteristiquesFiltrees = caracteristiques;
+
+    //   _buildControllers(
+    //     caracteristiques,
+    //     p!.donneesSpecifiques,
+    //   );
+
+    //   setState(() {});
+    // });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fetchDonneesS(p!.idPrixMarche!);
+    });
+
+    // ima
     // --- Récupérer l'image existante ---
     if (p!.image != null &&
         p!.image!.isNotEmpty &&
@@ -188,6 +288,77 @@ class _UpdatePrixMarcheState extends State<UpdatePrixMarche> {
       pathImageToSave = p!.image; // chemin permanent à réutiliser
     }
   }
+
+  Future<void> _fetchDonneesS(int idPrixMarche) async {
+    if (!mounted) return;
+
+    setState(() => isLoading = true);
+
+    try {
+      final List<DonneeSpecifique> localData =
+          await DatabaseService.getDonneesSpecifiquesByPrixMarche(idPrixMarche);
+
+      if (!mounted) return;
+
+      setState(() {
+        data = localData;
+        anciennesDonnees = localData; // 🔥 garder en mémoire
+      });
+
+// 🔥 récupérer caractéristiques correspondantes AVANT build
+      final caracteristiques =
+          await DatabaseService.getCaracteristiquesByProduit(
+              p!.produit!.codeProduit);
+
+// 🔥 construire avec valeurs existantes
+      _buildControllers(caracteristiques, localData);
+
+      setState(() {
+        caracteristiquesFiltrees = caracteristiques;
+      });
+    } catch (e) {
+      debugPrint("Erreur chargement données spécifiques: $e");
+    } finally {
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
+    }
+  }
+
+void _buildControllers(
+    List<CaracteristiqueProduit> caracteristiques, [
+    List<DonneeSpecifique>? valeursExistantes,
+  ]) {
+    dynamicControllers.clear();
+
+    for (var c in caracteristiques) {
+      final existing = valeursExistantes?.firstWhere(
+        (d) => d.caracteristiqueId == c.id,
+        orElse: () => DonneeSpecifique(
+          valeur: "",
+          caracteristiqueId: c.id!,
+        ),
+      );
+
+      dynamicControllers[c.id!] = TextEditingController(
+        text: existing?.valeur ?? "",
+      );
+    }
+  }
+
+  List<DonneeSpecifique> collectDynamicData() {
+    print(
+        "Collecte des données spécifiques dynamiques... ${dynamicControllers.length} controllers trouvés");
+    return dynamicControllers.entries
+        .map((e) => DonneeSpecifique(
+              caracteristiqueId: e.key,
+              valeur: e.value.text.trim(),
+            ))
+        .where((d) => d.valeur.isNotEmpty)
+        .toList();
+  }
+
+  
 
   void _deleteOldImageFile(String? path) {
     if (path != null && File(path).existsSync()) {
@@ -208,8 +379,12 @@ class _UpdatePrixMarcheState extends State<UpdatePrixMarche> {
       final catData = await DatabaseService.getAll("CategorieProduit");
       final acteurs = await DatabaseService.getAll("Acteur");
       final equiv = await DatabaseService.getAll("EquivalenceUnite");
+      final caract = await DatabaseService.getAll("CaracteristiqueProduit");
 
       setState(() {
+        caracteristiques =
+            caract.map((m) => CaracteristiqueProduit.fromJson(m)).toList();
+
         niveaux = niveauxData
             .map((m) => NiveauApprovisionnement.fromJson(m))
             .toList();
@@ -421,9 +596,26 @@ class _UpdatePrixMarcheState extends State<UpdatePrixMarche> {
           items: filteredProduits,
           itemLabel: (p) => p!.nomProduit ?? "",
           selectedItem: selectedProduit,
-          onSelected: (p) => setState(() => selectedProduit = p),
+          onSelected: (p) async {
+            final data = await DatabaseService.getCaracteristiquesByProduit(
+                p.codeProduit);
+
+            if (!mounted) return;
+
+            setState(() {
+              selectedProduit = p;
+              caracteristiquesFiltrees = data;
+            });
+
+            _buildControllers(
+              data,
+              anciennesDonnees,
+            );
+            calculateEquivalencePrice();
+          },
         ),
       ),
+      _buildDynamicFields(),
       SelectField(
         label: "Variété",
         icon: Icons.category_outlined,
@@ -460,11 +652,6 @@ class _UpdatePrixMarcheState extends State<UpdatePrixMarche> {
           );
         },
       ),
-      _buildTextField(
-          controller: ageController,
-          label: "Âge (jours)",
-          icon: Icons.history,
-          isNumber: true),
     ]);
   }
 
@@ -500,7 +687,6 @@ class _UpdatePrixMarcheState extends State<UpdatePrixMarche> {
       ),
       _buildTextField(
         controller: _prix1Controller,
-        isRequired: true,
         enabled: false,
         label: "Equivalence en ${selectedUnite1?.conversion ?? "unité"}",
         icon: Icons.payments_outlined,
@@ -565,7 +751,6 @@ class _UpdatePrixMarcheState extends State<UpdatePrixMarche> {
       _buildTextField(
         controller: prixTransportController,
         label: "Prix transport",
-        isRequired: true,
         icon: Icons.local_shipping_outlined,
         isNumber: true,
         suffix: "FCFA",
@@ -891,6 +1076,61 @@ class _UpdatePrixMarcheState extends State<UpdatePrixMarche> {
     );
   }
 
+  Widget _buildDynamicFields() {
+    if (caracteristiquesFiltrees.isEmpty) return SizedBox();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 🔥 MESSAGE INFO
+        Container(
+          padding: const EdgeInsets.all(10),
+          margin: const EdgeInsets.only(bottom: 10),
+          decoration: BoxDecoration(
+            color: AppColors.lightGreen.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.info_outline,
+                  size: 18, color: AppColors.primaryGreen),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  "Ces informations sont complémentaires et optionnelles.",
+                  style: TextStyle(
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        ...caracteristiquesFiltrees.map((c) {
+          final controller = dynamicControllers[c.id!];
+
+          if (controller == null) return const SizedBox();
+
+          final isNumber = c.type == "NOMBRE";
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildTextField(
+                controller: controller,
+                label: "Saisir ${c.nom ?? ""}",
+                icon: isNumber ? Icons.numbers : Icons.text_fields,
+                isNumber: isNumber,
+              ),
+              const SizedBox(height: 10),
+            ],
+          );
+        }),
+      ],
+    );
+  }
+
   String? safeText(TextEditingController c) {
     final text = c.text.trim();
     return text.isEmpty ? null : text;
@@ -903,7 +1143,6 @@ class _UpdatePrixMarcheState extends State<UpdatePrixMarche> {
         selectedFournisseur == null ||
         selectedUnite1 == null ||
         widget.enqueteCollecte == null ||
-        _prix1Controller.text.isEmpty ||
         _prix2Controller.text.isEmpty) {
       print("${selectedUniteMesure}");
       ScaffoldMessenger.of(context).showSnackBar(
@@ -926,11 +1165,9 @@ class _UpdatePrixMarcheState extends State<UpdatePrixMarche> {
 
     try {
       final data = PrixMarche(
-        // codePrix: p!.codePrix!,
         variete: selectedVariete!.libelle ?? "",
         prixUnite1: safeText(_prix1Controller) ?? "",
         prixUnite2: safeText(_prix2Controller) ?? "",
-        // prixUnite3: safeText(_prix3Controller) ?? "",
         uniteMesure2: selectedUniteMesure ?? "",
         uniteMesure3: selectedUniteMesure2 ?? "",
         qualiteProduit: selectedQualite ?? "",
@@ -946,18 +1183,20 @@ class _UpdatePrixMarcheState extends State<UpdatePrixMarche> {
         clientPrincipal: selectedClient!,
         niveau: selectedNiveau,
         commercant: selectedActeur ?? "",
-        age: safeText(ageController) ?? "",
         observation: safeText(observationController) ?? "",
         image: pathImageToSave,
       );
 
+// 🔥 IMPORTANT
+      data.donneesSpecifiques = collectDynamicData();
+
       await DatabaseService.update(
         "PrixMarches",
-        data.toJson(),
+        data.toJsonData(), // 🔥 PAS toJsonData
         "idPrixMarche",
         p!.idPrixMarche,
       );
-
+      print("DATA JSON: ${data.toJsonData()}");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text("Produit modifié avec succès"),

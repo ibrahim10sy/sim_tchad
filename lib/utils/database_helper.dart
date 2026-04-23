@@ -94,7 +94,7 @@ Future<Database> openDatabaseConnection() async {
         marche TEXT,
         enqueteur TEXT,
         enqueteCollecte TEXT,
-        donneeSpecifique TEXT
+        donneesSpecifiques TEXT
   )
   ''');
 

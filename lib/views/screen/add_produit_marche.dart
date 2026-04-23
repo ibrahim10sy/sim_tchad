@@ -255,24 +255,25 @@ class _AddProduitMarcheState extends State<AddProduitMarche> {
 
     try {
       final List<DonneeSpecifique> localData =
-    await DatabaseService.getDonneesSpecifiquesByPrixMarche(idPrixMarche);
+          await DatabaseService.getDonneesSpecifiquesByPrixMarche(idPrixMarche);
 
       if (!mounted) return;
 
       setState(() {
-  data = localData;
-});
+        data = localData;
+      });
 
 // 🔥 récupérer caractéristiques correspondantes AVANT build
-final caracteristiques =
-    await DatabaseService.getCaracteristiquesByProduit(p!.produit!.codeProduit);
+      final caracteristiques =
+          await DatabaseService.getCaracteristiquesByProduit(
+              p!.produit!.codeProduit);
 
 // 🔥 construire avec valeurs existantes
-_buildControllers(caracteristiques, localData);
+      _buildControllers(caracteristiques, localData);
 
-setState(() {
-  caracteristiquesFiltrees = caracteristiques;
-});
+      setState(() {
+        caracteristiquesFiltrees = caracteristiques;
+      });
     } catch (e) {
       debugPrint("Erreur chargement données spécifiques: $e");
     } finally {
@@ -281,24 +282,26 @@ setState(() {
       }
     }
   }
-void _buildControllers(List<CaracteristiqueProduit> caracteristiques,
-    [List<DonneeSpecifique>? values]) {
-  
-  dynamicControllers.clear();
 
-  for (var c in caracteristiques) {
-    final value = values
-        ?.firstWhere(
-          (d) => d.caracteristiqueId == c.id,
-          orElse: () => DonneeSpecifique(valeur: "", caracteristiqueId: c.id!),
-        )
-        .valeur;
+  void _buildControllers(List<CaracteristiqueProduit> caracteristiques,
+      [List<DonneeSpecifique>? values]) {
+    dynamicControllers.clear();
 
-    dynamicControllers[c.id!] = TextEditingController(
-      text: value ?? "",
-    );
+    for (var c in caracteristiques) {
+      final value = values
+          ?.firstWhere(
+            (d) => d.caracteristiqueId == c.id,
+            orElse: () =>
+                DonneeSpecifique(valeur: "", caracteristiqueId: c.id!),
+          )
+          .valeur;
+
+      dynamicControllers[c.id!] = TextEditingController(
+        text: value ?? "",
+      );
+    }
   }
-}
+
   Future<void> _fetchDataLocal() async {
     if (!mounted) return;
     setState(() => isLoading = true);
@@ -528,34 +531,21 @@ void _buildControllers(List<CaracteristiqueProduit> caracteristiques,
           items: filteredProduits,
           itemLabel: (p) => p!.nomProduit ?? "",
           selectedItem: selectedProduit,
-          // onSelected: (p) async {
-          //   final data = await DatabaseService.getCaracteristiquesByProduit(
-          //       p.codeProduit);
-
-          //   setState(() {
-          //     selectedProduit = p;
-          //     caracteristiquesFiltrees = data;
-
-          //     // 🔥 reset anciens champs
-          //     dynamicControllers.clear();
-          //   });
-
-          //   calculateEquivalencePrice();
-          // },
+        
           onSelected: (p) async {
-  final data =
-      await DatabaseService.getCaracteristiquesByProduit(p.codeProduit);
+            final data = await DatabaseService.getCaracteristiquesByProduit(
+                p.codeProduit);
 
-  if (!mounted) return;
+            if (!mounted) return;
 
-  setState(() {
-    selectedProduit = p;
-    caracteristiquesFiltrees = data;
-  });
+            setState(() {
+              selectedProduit = p;
+              caracteristiquesFiltrees = data;
+            });
 
-  _buildControllers(data); // 🔥 reset propre
-  calculateEquivalencePrice();
-},
+            _buildControllers(data); // 🔥 reset propre
+            calculateEquivalencePrice();
+          },
         ),
       ),
       _buildDynamicFields(),
@@ -629,33 +619,27 @@ void _buildControllers(List<CaracteristiqueProduit> caracteristiques,
           ),
         ),
 
-       ...caracteristiquesFiltrees.map((c) {
-  final controller = dynamicControllers[c.id!];
+        ...caracteristiquesFiltrees.map((c) {
+          final controller = dynamicControllers[c.id!];
 
-  if (controller == null) return const SizedBox();
+          if (controller == null) return const SizedBox();
 
-  final isNumber = c.type == "NOMBRE";
+          final isNumber = c.type == "NOMBRE";
 
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(
-        c.nom ?? "",
-        style: TextStyle(
-          fontWeight: FontWeight.w600,
-          fontSize: 14,
-        ),
-      ),
-      _buildTextField(
-        controller: controller,
-        label: "Saisir ${c.nom ?? ""}",
-        icon: isNumber ? Icons.numbers : Icons.text_fields,
-        isNumber: isNumber,
-      ),
-      const SizedBox(height: 10),
-    ],
-  );
-}).toList(),
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+          
+              _buildTextField(
+                controller: controller,
+                label: "Saisir ${c.nom ?? ""}",
+                icon: isNumber ? Icons.numbers : Icons.text_fields,
+                isNumber: isNumber,
+              ),
+              const SizedBox(height: 10),
+            ],
+          );
+        }).toList(),
       ],
     );
   }

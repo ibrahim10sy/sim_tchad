@@ -35,28 +35,32 @@ class DatabaseService {
     return result;
   }
 
-  Map<String, dynamic> prixdecodeRelations(
+  static Map<String, dynamic> prixdecodeRelations(
   Map<String, dynamic> row,
   List<String>? relationFields,
 ) {
   final data = Map<String, dynamic>.from(row);
 
-  // 👉 Décodage de donneeSpecifique
-  if (data['donneeSpecifique'] != null &&
-      data['donneeSpecifique'].toString().isNotEmpty) {
+  if (data['donneesSpecifiques'] != null &&
+      data['donneesSpecifiques'].toString().isNotEmpty) {
     try {
-      data['donneeSpecifique'] = jsonDecode(data['donneeSpecifique']);
+      final decoded = jsonDecode(data['donneesSpecifiques']);
+
+      data['donneesSpecifiques'] = (decoded as List)
+          .map((e) => DonneeSpecifique.fromMap(e))
+          .toList();
     } catch (e) {
-      print("Erreur decode donneeSpecifique: $e");
-      data['donneeSpecifique'] = [];
+      print("Erreur decode donneesSpecifiques: $e");
+      data['donneesSpecifiques'] = [];
     }
   } else {
-    data['donneeSpecifique'] = [];
+    data['donneesSpecifiques'] = [];
   }
 
   return data;
 }
 
+  
   /// ==========================
   /// INSERT
   /// ==========================
@@ -219,20 +223,22 @@ class DatabaseService {
       whereArgs: [id],
     );
   }
-static Future<int?> deleteWhere(
-  String table,
-  String where,
-  List<dynamic> whereArgs,
-) async {
-  final db = await openDatabaseConnection();
-  if (db == null) return null;
 
-  return await db.delete(
-    table,
-    where: where,
-    whereArgs: whereArgs,
-  );
-}
+  static Future<int?> deleteWhere(
+    String table,
+    String where,
+    List<dynamic> whereArgs,
+  ) async {
+    final db = await openDatabaseConnection();
+    if (db == null) return null;
+
+    return await db.delete(
+      table,
+      where: where,
+      whereArgs: whereArgs,
+    );
+  }
+
   /// ==========================
   /// Méthodes pour fiches filtrées
   /// ==========================
@@ -337,8 +343,8 @@ static Future<int?> deleteWhere(
       final rows = await db.rawQuery('SELECT * FROM PrixMarches');
 
       return rows
-          .map(
-              (row) => PrixMarche.fromMap(decodeRelations(row, relationFields)))
+          .map((row) =>
+              PrixMarche.fromMap(prixdecodeRelations(row, relationFields)))
           .toList();
     } catch (error) {
       print("Erreur marche $error");
@@ -625,27 +631,24 @@ static Future<int?> deleteWhere(
   }
 
   static Future<List<DonneeSpecifique>> getDonneesSpecifiquesByPrixMarche(
-  int idPrixMarche,
-) async {
-  final db = await openDatabaseConnection();
-  if (db == null) return [];
+    int idPrixMarche,
+  ) async {
+    final db = await openDatabaseConnection();
+    if (db == null) return [];
 
-  try {
-    final result = await db.query(
-      "DonneeSpecifique",
-      where: "idPrixMarche = ?",
-      whereArgs: [idPrixMarche],
-    );
+    try {
+      final result = await db.query(
+        "DonneeSpecifique",
+        where: "idPrixMarche = ?",
+        whereArgs: [idPrixMarche],
+      );
 
-    return result
-        .map((e) => DonneeSpecifique.fromJson(e))
-        .toList();
-  } catch (e) {
-    print("Erreur getDonneesSpecifiquesByPrixMarche: $e");
-    return [];
+      return result.map((e) => DonneeSpecifique.fromJson(e)).toList();
+    } catch (e) {
+      print("Erreur getDonneesSpecifiquesByPrixMarche: $e");
+      return [];
+    }
   }
-}
-
 
   static Future<List<SuiviFlux>> getSuiviByNum(String numFiche,
       [List<String>? relationFields]) async {

@@ -235,7 +235,7 @@ class _RejetPageState extends State<RejetPage> {
       }
     }
   }
-
+ 
   @override
   Widget build(BuildContext context) {
     bool toutEstVide = fiches.isEmpty &&

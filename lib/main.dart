@@ -6,4 +6,4 @@ void main() async{
    WidgetsFlutterBinding.ensureInitialized();
   await openDatabaseConnection(); 
   runApp(const MyApp()); 
-}
+} 

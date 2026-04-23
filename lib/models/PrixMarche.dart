@@ -176,6 +176,28 @@ class PrixMarche {
     );
   }
 
+  static List<DonneeSpecifique> _parseDonneesSpecifiques(dynamic value) {
+    if (value == null) return [];
+
+    // 🔥 CAS 1 : déjà une liste d'objets
+    if (value is List<DonneeSpecifique>) {
+      return value;
+    }
+
+    // 🔥 CAS 2 : JSON String
+    if (value is String && value.isNotEmpty) {
+      final decoded = jsonDecode(value);
+      return (decoded as List).map((e) => DonneeSpecifique.fromMap(e)).toList();
+    }
+
+    // 🔥 CAS 3 : List<Map>
+    if (value is List) {
+      return value.map((e) => DonneeSpecifique.fromMap(e)).toList();
+    }
+
+    return [];
+  }
+
   /// Construire depuis SQLite (String JSON reconverti en objets)
   factory PrixMarche.fromMap(Map<String, dynamic> map) {
     return PrixMarche(
@@ -208,9 +230,7 @@ class PrixMarche {
 
       // ✅ FIX IMPORTANT JSON STRING → LIST
       donneesSpecifiques: map['donneesSpecifiques'] != null
-          ? (jsonDecode(map['donneesSpecifiques']) as List)
-              .map((e) => DonneeSpecifique.fromMap(e))
-              .toList()
+          ? _parseDonneesSpecifiques(map['donneesSpecifiques'])
           : [],
 
       produit: map['produit'] != null
@@ -306,6 +326,42 @@ class PrixMarche {
       //     ? donneesSpecifiques!.map((e) => e.toMap()).toList()
       //     : null,
 
+      // Relations encodées en JSON String
+      'produit': produit != null ? jsonEncode(produit!.toJson()) : null,
+      'niveau': niveau != null ? jsonEncode(niveau!.toJson()) : null,
+      'marche': marche != null ? jsonEncode(marche!.toJson()) : null,
+      'enqueteCollecte': enqueteCollecte != null
+          ? jsonEncode(enqueteCollecte!.toJson())
+          : null,
+    };
+  }
+
+  Map<String, dynamic> toJsonData() {
+    return {
+      'variete': variete,
+      'prixUnite1': prixUnite1,
+      'prixUnite2': prixUnite2,
+      // 'prixUnite3': prixUnite3,
+      'uniteMesure1': uniteMesure1,
+      'uniteMesure2': uniteMesure2,
+      'uniteMesure3': uniteMesure3,
+      'prixTransport': prixTransport,
+      'moyenTransport': moyenTransport,
+      'image': image,
+      'fournisseur': fournisseur,
+      'qualiteProduit': qualiteProduit,
+      'clientPrincipal': clientPrincipal,
+      'uniteTransport': uniteTransport,
+      'commercant': commercant,
+      'etatRoute': etatRoute,
+      'origineProduit': origineProduit,
+      'observation': observation,
+      'dateAjout': dateAjout,
+      'donneesSpecifiques': donneesSpecifiques != null
+          ? jsonEncode(
+              donneesSpecifiques!.map((e) => e.toMap()).toList(),
+            )
+          : null,
       // Relations encodées en JSON String
       'produit': produit != null ? jsonEncode(produit!.toJson()) : null,
       'niveau': niveau != null ? jsonEncode(niveau!.toJson()) : null,
